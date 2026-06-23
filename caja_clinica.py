@@ -96,8 +96,13 @@ async def login_page(request: Request):
     if usuario_autenticado(request):
         return RedirectResponse(url="/", status_code=303)
     error = request.session.pop("error_login", None)
-    # Corrección aquí: agregamos context=
-    return templates.TemplateResponse(name="login.html", context={"request": request, "error": error})
+    
+    # LA CORRECCIÓN: 'request' va primero afuera, y las demás variables en 'context'
+    return templates.TemplateResponse(
+        request=request, 
+        name="login.html", 
+        context={"error": error}
+    )
 
 @app.post("/login")
 async def login_action(request: Request, password: str = Form(...)):
@@ -136,11 +141,18 @@ async def panel_principal(request: Request):
         conexion.close()
     
     mensaje = request.session.pop("mensaje_flash", None)
-    # Corrección aquí: agregamos context=
-    return templates.TemplateResponse(name="control_caja.html", context={
-        "request": request, "reporte_mensual": reporte_mes, "reporte_semanal": reporte_semana, "movimientos": movimientos, "mensaje": mensaje
-    })
-
+    
+    # LA CORRECCIÓN: 'request' va primero afuera, y las demás variables en 'context'
+    return templates.TemplateResponse(
+        request=request, 
+        name="control_caja.html", 
+        context={
+            "reporte_mensual": reporte_mes, 
+            "reporte_semanal": reporte_semana, 
+            "movimientos": movimientos, 
+            "mensaje": mensaje
+        }
+    )
 @app.post("/guardar-movimiento")
 async def guardar_movimiento(request: Request, tipo: str = Form(...), concepto: str = Form(...), categoria: str = Form(...), monto: float = Form(...)):
     if not usuario_autenticado(request):
