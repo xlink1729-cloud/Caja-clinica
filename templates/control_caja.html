@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ CLINIC_NAME }} - Control de Caja</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <header class="bg-white shadow-sm border-b border-gray-200 py-4 px-6 flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-900">✨ {{ CLINIC_NAME }}</h1>
+        <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200">
+            Control de Efectivo Activo
+        </span>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+        
+        {% if mensaje %}
+        <div class="p-4 bg-emerald-500 text-white rounded-lg shadow-md font-medium">
+            {{ mensaje }}
+        </div>
+        {% endif %}
+
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">📝 Registrar Movimiento de Efectivo</h2>
+            <form action="/guardar-movimiento" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Tipo de flujo</label>
+                    <select name="tipo" class="w-full p-2.5 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <option value="INGRESO">📥 Ingreso (Cobro, Terapia, Venta)</option>
+                        <option value="EGRESO">📤 Egreso (Renta, Luz, Insumos)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Concepto / Descripción</label>
+                    <input type="text" name="concepto" required placeholder="Ej: Consulta Juan Pérez" class="w-full p-2.5 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Categoría</label>
+                    <input type="text" name="categoria" required placeholder="Ej: Servicio, Insumos, Renta" class="w-full p-2.5 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Monto ($)</label>
+                    <div class="flex">
+                        <input type="number" step="0.01" name="monto" required placeholder="0.00" class="w-full p-2.5 border rounded-l-lg bg-gray-50 focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 rounded-r-lg transition">Guardar</button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700 flex items-center gap-2">🗓️ Ganancias por Semana</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-gray-200 bg-gray-50 text-xs font-bold text-gray-500 uppercase">
+                                <th class="p-3">Semana</th>
+                                <th class="p-3 text-emerald-600">Ingresos</th>
+                                <th class="p-3 text-red-600">Egresos</th>
+                                <th class="p-3">Ganancia Neta</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-sm">
+                            {% for r in reporte_semanal %}
+                            <tr>
+                                <td class="p-3 font-medium text-gray-900">{{ r.periodo }}</td>
+                                <td class="p-3 text-emerald-600 font-semibold">${{ "{:,.2f}".format(r.ingresos) }}</td>
+                                <td class="p-3 text-red-600 font-semibold">${{ "{:,.2f}".format(r.egresos) }}</td>
+                                <td class="p-3 font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">
+                                    ${{ "{:,.2f}".format(r.ganancia) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700 flex items-center gap-2">📊 Ganancias por Mes</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-gray-200 bg-gray-50 text-xs font-bold text-gray-500 uppercase">
+                                <th class="p-3">Mes</th>
+                                <th class="p-3 text-emerald-600">Ingresos</th>
+                                <th class="p-3 text-red-600">Egresos</th>
+                                <th class="p-3">Ganancia Neta</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-sm">
+                            {% for r in reporte_mensual %}
+                            <tr>
+                                <td class="p-3 font-medium text-gray-900">{{ r.periodo }}</td>
+                                <td class="p-3 text-emerald-600 font-semibold">${{ "{:,.2f}".format(r.ingresos) }}</td>
+                                <td class="p-3 text-red-600 font-semibold">${{ "{:,.2f}".format(r.egresos) }}</td>
+                                <td class="p-3 font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">
+                                    ${{ "{:,.2f}".format(r.ganancia) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">🕒 Últimos 15 Movimientos</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-gray-200 bg-gray-50 text-xs font-bold text-gray-500 uppercase">
+                            <th class="p-3">Fecha</th>
+                            <th class="p-3">Tipo</th>
+                            <th class="p-3">Concepto</th>
+                            <th class="p-3">Categoría</th>
+                            <th class="p-3">Monto</th>
+                            <th class="p-3 text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-sm">
+                        {% for m in movimientos %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 text-gray-500">{{ m[5].strftime('%Y-%m-%d %H:%M') if m[5] else '' }}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-0.5 rounded text-xs font-bold {% if m[1] == 'INGRESO' %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ m[1] }}
+                                </span>
+                            </td>
+                            <td class="p-3 font-medium text-gray-800">{{ m[2] }}</td>
+                            <td class="p-3 text-gray-600">
+                                <span class="bg-gray-100 px-2 py-1 rounded text-xs">{{ m[3] }}</span>
+                            </td>
+                            <td class="p-3 font-semibold {% if m[1] == 'INGRESO' %}text-emerald-600{% else %}text-red-600{% endif %}">
+                                {% if m[1] == 'INGRESO' %}+{% else %}-{% endif %}${{ "{:,.2f}".format(m[4]) }}
+                            </td>
+                            <td class="p-3 text-center">
+                                <form action="/borrar-movimiento/{{ m[0] }}" method="POST" onsubmit="return confirm('¿Seguro que quieres eliminar este registro por error de dedo?');">
+                                    <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-semibold">Eliminar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+</body>
+</html>
