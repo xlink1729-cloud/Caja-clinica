@@ -96,7 +96,8 @@ async def login_page(request: Request):
     if usuario_autenticado(request):
         return RedirectResponse(url="/", status_code=303)
     error = request.session.pop("error_login", None)
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+    # Corrección aquí: agregamos context=
+    return templates.TemplateResponse(name="login.html", context={"request": request, "error": error})
 
 @app.post("/login")
 async def login_action(request: Request, password: str = Form(...)):
@@ -135,7 +136,8 @@ async def panel_principal(request: Request):
         conexion.close()
     
     mensaje = request.session.pop("mensaje_flash", None)
-    return templates.TemplateResponse("control_caja.html", {
+    # Corrección aquí: agregamos context=
+    return templates.TemplateResponse(name="control_caja.html", context={
         "request": request, "reporte_mensual": reporte_mes, "reporte_semanal": reporte_semana, "movimientos": movimientos, "mensaje": mensaje
     })
 
