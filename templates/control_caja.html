@@ -48,8 +48,35 @@
         </section>
 
         <section class="bg-white p-6 rounded-xl shadow-sm border">
-            <h2 class="text-lg font-semibold mb-4">🕒 Últimos 15 Movimientos</h2>
-            <table class="w-full text-sm"><thead><tr class="text-gray-500 text-left"><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Monto</th></tr></thead><tbody>{% for m in movimientos %}<tr><td>{{ m[5].strftime('%Y-%m-%d') }}</td><td>{{ m[1] }}</td><td>{{ m[2] }}</td><td>${{ "{:,.2f}".format(m[4]) }}</td></tr>{% endfor %}</tbody></table>
+    <h2 class="text-lg font-semibold mb-4">🕒 Últimos 15 Movimientos</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-gray-500 text-left">
+                    <th class="p-2">Fecha</th>
+                    <th class="p-2">Tipo</th>
+                    <th class="p-2">Concepto</th>
+                    <th class="p-2">Monto</th>
+                    <th class="p-2 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movimientos %}
+                <tr class="border-t border-gray-100">
+                    <td class="p-2">{{ m[5].strftime('%Y-%m-%d') }}</td>
+                    <td class="p-2">{{ m[1] }}</td>
+                    <td class="p-2">{{ m[2] }}</td>
+                    <td class="p-2 font-medium">${{ "{:,.2f}".format(m[4]) }}</td>
+                    <td class="p-2 text-center">
+                        <form action="/borrar-movimiento/{{ m[0] }}" method="POST" onsubmit="return confirm('¿Eliminar este movimiento?');">
+                            <button type="submit" class="text-red-600 hover:text-red-800 font-bold text-xs bg-red-50 px-2 py-1 rounded">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
         </section>
     </main>
 </body>
