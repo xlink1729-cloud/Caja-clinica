@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse 
 from zoneinfo import ZoneInfo
 from fastapi.staticfiles import StaticFiles
+from fastapi import Form
 from starlette.middleware.sessions import SessionMiddleware
 
 CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER")
@@ -166,17 +167,33 @@ async def panel_principal(request: Request):
             "mensaje": mensaje
         }
     )
+
 @app.post("/guardar-movimiento")
-async def guardar_movimiento(request: Request, tipo: str = Form(...), concepto: str = Form(...), categoria: str = Form(...), monto: float = Form(...)):
+async def guardar_movimiento(
+    request: Request, 
+    tipo: str = Form(...), 
+    concepto: str = Form(...), 
+    categoria: str = Form(...), 
+    monto: float = Form(...),
+    fecha: str = Form(...) # Capturamos la fecha enviada desde el formulario
+):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
     conexion = psycopg2.connect(DATABASE_URL)
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO flujo_caja (tipo, concepto, categoria, monto) VALUES (%s, %s, %s, %s)", (tipo.upper(), concepto.strip(), categoria.strip(), monto))
+    
+    # Insertamos la fecha capturada del formulario
+    # Si la fecha viene como "2026-06-22", Postgres la asignará con hora 00:00:00
+    cursor.execute(
+        "INSERT INTO flujo_caja (tipo, concepto, categoria, monto, fecha) VALUES (%s, %s, %s, %s, %s)", 
+        (tipo.upper(), concepto.strip(), categoria.strip(), monto, fecha)
+    )
+    
     conexion.commit()
     cursor.close()
     conexion.close()
+    
     request.session["mensaje_flash"] = "✅ Registro guardado correctamente"
     return RedirectResponse(url="/", status_code=303)
 
