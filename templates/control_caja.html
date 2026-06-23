@@ -33,10 +33,10 @@
 
         <!-- Reportes -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border"><h2 class="text-lg font-semibold mb-4">🗓️ Ganancias por Semana</h2>
+            <div class="bg-white p-6 rounded-xl shadow-sm border"><h2 class="text-lg font-semibold mb-4">🗓️ Balance por Semana</h2>
                 <table class="w-full text-sm"><thead><tr class="text-gray-500 text-left uppercase"><th>Semana</th><th>Ingresos</th><th>Egresos</th><th>Ganancia</th></tr></thead><tbody>{% for r in reporte_semanal %}<tr><td>{{ r.periodo }}</td><td class="text-emerald-600">${{ "{:,.2f}".format(r.ingresos) }}</td><td class="text-red-600">${{ "{:,.2f}".format(r.egresos) }}</td><td class="font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">${{ "{:,.2f}".format(r.ganancia) }}</td></tr>{% endfor %}</tbody></table>
             </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border"><h2 class="text-lg font-semibold mb-4">📊 Ganancias por Mes</h2>
+            <div class="bg-white p-6 rounded-xl shadow-sm border"><h2 class="text-lg font-semibold mb-4">📊 Balance por Mes</h2>
                 <table class="w-full text-sm"><thead><tr class="text-gray-500 text-left uppercase"><th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Ganancia</th></tr></thead><tbody>{% for r in reporte_mensual %}<tr><td>{{ r.periodo }}</td><td class="text-emerald-600">${{ "{:,.2f}".format(r.ingresos) }}</td><td class="text-red-600">${{ "{:,.2f}".format(r.egresos) }}</td><td class="font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">${{ "{:,.2f}".format(r.ganancia) }}</td></tr>{% endfor %}</tbody></table>
             </div>
         </div>
