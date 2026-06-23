@@ -1,24 +1,26 @@
 import os
 import psycopg2
 from datetime import datetime
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse 
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER")
 PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "#10b981") 
-
-app = FastAPI(title="Control de Caja")
-templates = Jinja2Templates(directory="templates")
+# Definimos la contraseña que se leerá desde Render. Si no hay, por defecto es 'admin123'
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 app = FastAPI(title="Control de Caja")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Secreto criptográfico para las cookies de sesión
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "secreto_super_seguro_2026"))
+
+templates = Jinja2Templates(directory="templates")
 templates.env.globals["CLINIC_NAME"] = CLINIC_NAME
 templates.env.globals["PRIMARY_COLOR"] = PRIMARY_COLOR
-
-app.add_middleware(SessionMiddleware, secret_key="clave_secreta_caja_2026")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
@@ -46,6 +48,10 @@ def inicializar_bd():
 @app.on_event("startup")
 def startup_event():
     inicializar_bd()
+
+# Función auxiliar para verificar si el usuario ya inició sesión
+def usuario_autenticado(request: Request):
+    return request.session.get("autenticado") == True
 
 def obtener_reporte_mensual():
     if not DATABASE_URL: return []
@@ -77,11 +83,40 @@ def obtener_reporte_semanal():
     conexion.close()
     return [{"periodo": r[0], "ingresos": r[1] or 0, "egresos": r[2] or 0, "ganancia": (r[1] or 0) - (r[2] or 0)} for r in filas]
 
+# --- RUTAS DE AUTENTICACIÓN ---
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    # Si ya está logueado, lo mandamos al panel directo
+    if usuario_autenticado(request):
+        return RedirectResponse(url="/", status_code=303)
+    error = request.session.pop("error_login", None)
+    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+
+@app.post("/login")
+async def login_action(request: Request, password: str = Form(...)):
+    if password == ADMIN_PASSWORD:
+        request.session["autenticado"] = True
+        return RedirectResponse(url="/", status_code=303)
+    else:
+        request.session["error_login"] = "❌ Contraseña incorrecta"
+        return RedirectResponse(url="/login", status_code=303)
+
+@app.get("/logout")
+async def logout_action(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)
+
+# --- RUTAS PROTEGIDAS DEL PANEL ---
+
 @app.get("/", response_class=HTMLResponse)
 async def panel_principal(request: Request):
+    if not usuario_autenticado(request):
+        return RedirectResponse(url="/login", status_code=303)
+        
     reporte_mes = obtener_reporte_mensual()
     reporte_semana = obtener_reporte_semanal()
-
+    
     movimientos = []
     if DATABASE_URL:
         conexion = psycopg2.connect(DATABASE_URL)
@@ -90,14 +125,17 @@ async def panel_principal(request: Request):
         movimientos = cursor.fetchall()
         cursor.close()
         conexion.close()
-
+    
     mensaje = request.session.pop("mensaje_flash", None)
-    return templates.TemplateResponse(request, "control_caja.html", {
-        "reporte_mensual": reporte_mes, "reporte_semanal": reporte_semana, "movimientos": movimientos, "mensaje": mensaje
+    return templates.TemplateResponse("control_caja.html", {
+        "request": request, "reporte_mensual": reporte_mes, "reporte_semanal": reporte_semana, "movimientos": movimientos, "mensaje": mensaje
     })
 
 @app.post("/guardar-movimiento")
 async def guardar_movimiento(request: Request, tipo: str = Form(...), concepto: str = Form(...), categoria: str = Form(...), monto: float = Form(...)):
+    if not usuario_autenticado(request):
+        return RedirectResponse(url="/login", status_code=303)
+        
     conexion = psycopg2.connect(DATABASE_URL)
     cursor = conexion.cursor()
     cursor.execute("INSERT INTO flujo_caja (tipo, concepto, categoria, monto) VALUES (%s, %s, %s, %s)", (tipo.upper(), concepto.strip(), categoria.strip(), monto))
@@ -108,7 +146,10 @@ async def guardar_movimiento(request: Request, tipo: str = Form(...), concepto: 
     return RedirectResponse(url="/", status_code=303)
 
 @app.post("/borrar-movimiento/{id}")
-async def borrar_movimiento(id: int):
+async def borrar_movimiento(request: Request, id: int):
+    if not usuario_autenticado(request):
+        return RedirectResponse(url="/login", status_code=303)
+        
     conexion = psycopg2.connect(DATABASE_URL)
     cursor = conexion.cursor()
     cursor.execute("DELETE FROM flujo_caja WHERE id = %s", (id,))
