@@ -144,10 +144,13 @@ async def panel_principal(request: Request):
     movimientos = []
     if DATABASE_URL:
         conexion = psycopg2.connect(DATABASE_URL)
+        # --- AQUÍ ESTABA EL ERROR: Faltaba crear el cursor ---
+        cursor = conexion.cursor() 
+        
         cursor.execute("""
-        SELECT id, tipo, concepto, categoria, monto, 
-        (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City')
-        FROM flujo_caja ORDER BY fecha DESC LIMIT 15
+            SELECT id, tipo, concepto, categoria, monto, 
+            (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City') 
+            FROM flujo_caja ORDER BY fecha DESC LIMIT 15
         """)
         
         movimientos = cursor.fetchall()
@@ -156,7 +159,6 @@ async def panel_principal(request: Request):
     
     mensaje = request.session.pop("mensaje_flash", None)
     
-    # LA CORRECCIÓN: 'request' va primero afuera, y las demás variables en 'context'
     return templates.TemplateResponse(
         request=request, 
         name="control_caja.html", 
@@ -167,7 +169,7 @@ async def panel_principal(request: Request):
             "mensaje": mensaje
         }
     )
-
+    
 @app.post("/guardar-movimiento")
 async def guardar_movimiento(
     request: Request, 
