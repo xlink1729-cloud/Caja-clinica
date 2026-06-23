@@ -210,3 +210,30 @@ async def borrar_movimiento(request: Request, id: int):
     cursor.close()
     conexion.close()
     return RedirectResponse(url="/", status_code=303)
+
+# --- RUTA PARA MOSTRAR EL FORMULARIO DE EDICIÓN ---
+@app.get("/editar-movimiento/{id}", response_class=HTMLResponse)
+async def editar_form(request: Request, id: int):
+    if not usuario_autenticado(request):
+        return RedirectResponse(url="/login", status_code=303)
+    
+    conexion = psycopg2.connect(DATABASE_URL)
+    cursor = conexion.cursor()
+    cursor.execute("SELECT id, tipo, concepto, categoria, monto, fecha FROM flujo_caja WHERE id = %s", (id,))
+    movimiento = cursor.fetchone()
+    cursor.close()
+    conexion.close()
+    
+    return templates.TemplateResponse(request, "editar.html", {"m": movimiento})
+
+# --- RUTA PARA GUARDAR LA EDICIÓN ---
+@app.post("/actualizar-movimiento/{id}")
+async def actualizar_movimiento(request: Request, id: int, tipo: str = Form(...), concepto: str = Form(...), categoria: str = Form(...), monto: float = Form(...)):
+    conexion = psycopg2.connect(DATABASE_URL)
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE flujo_caja SET tipo=%s, concepto=%s, categoria=%s, monto=%s WHERE id=%s", (tipo.upper(), concepto, categoria, monto, id))
+    conexion.commit()
+    cursor.close()
+    conexion.close()
+    request.session["mensaje_flash"] = "✅ Registro actualizado"
+    return RedirectResponse(url="/", status_code=303)
