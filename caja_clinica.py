@@ -143,8 +143,12 @@ async def panel_principal(request: Request):
     movimientos = []
     if DATABASE_URL:
         conexion = psycopg2.connect(DATABASE_URL)
-        cursor = conexion.cursor()
-        cursor.execute("SELECT id, tipo, concepto, categoria, monto, fecha FROM flujo_caja ORDER BY fecha DESC LIMIT 15")
+       cursor.execute("""
+       SELECT id, tipo, concepto, categoria, monto, 
+       (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City') 
+       FROM flujo_caja ORDER BY fecha DESC LIMIT 15
+       """)
+
         movimientos = cursor.fetchall()
         cursor.close()
         conexion.close()
