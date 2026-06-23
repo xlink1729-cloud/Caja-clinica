@@ -12,6 +12,9 @@ PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "#10b981")
 app = FastAPI(title="Control de Caja")
 templates = Jinja2Templates(directory="templates")
 
+app = FastAPI(title="Control de Caja")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 templates.env.globals["CLINIC_NAME"] = CLINIC_NAME
 templates.env.globals["PRIMARY_COLOR"] = PRIMARY_COLOR
 
