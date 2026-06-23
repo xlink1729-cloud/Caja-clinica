@@ -1,4 +1,5 @@
 import os
+import time
 import psycopg2
 from datetime import datetime
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
@@ -9,14 +10,20 @@ from starlette.middleware.sessions import SessionMiddleware
 
 CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER")
 PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "#10b981") 
-# Definimos la contraseña que se leerá desde Render. Si no hay, por defecto es 'admin123'
+# Contraseña maestra leída desde el panel de Render
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 app = FastAPI(title="Control de Caja")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Secreto criptográfico para las cookies de sesión
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "secreto_super_seguro_2026"))
+# --- MEDIDAS DE CIBERSEGURIDAD AVANZADA PARA SESIONES (Manejo de Efectivo) ---
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=os.getenv("SESSION_SECRET", "secreto_super_seguro_2026"),
+    session_cookie="session_caja",
+    same_site="lax",       # Protege contra ataques de falsificación de peticiones en sitios cruzados (CSRF)
+    https_only=True        # CRÍTICO: La cookie de sesión solo viaja por canales encriptados HTTPS (Render)
+)
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["CLINIC_NAME"] = CLINIC_NAME
@@ -49,7 +56,6 @@ def inicializar_bd():
 def startup_event():
     inicializar_bd()
 
-# Función auxiliar para verificar si el usuario ya inició sesión
 def usuario_autenticado(request: Request):
     return request.session.get("autenticado") == True
 
@@ -87,7 +93,6 @@ def obtener_reporte_semanal():
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    # Si ya está logueado, lo mandamos al panel directo
     if usuario_autenticado(request):
         return RedirectResponse(url="/", status_code=303)
     error = request.session.pop("error_login", None)
@@ -99,6 +104,9 @@ async def login_action(request: Request, password: str = Form(...)):
         request.session["autenticado"] = True
         return RedirectResponse(url="/", status_code=303)
     else:
+        # MITIGACIÓN DE FUERZA BRUTA: Hace esperar 1 segundo si la clave falla, 
+        # impidiendo que un script intente miles de contraseñas por segundo de forma automatizada.
+        time.sleep(1)
         request.session["error_login"] = "❌ Contraseña incorrecta"
         return RedirectResponse(url="/login", status_code=303)
 
@@ -107,7 +115,7 @@ async def logout_action(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
 
-# --- RUTAS PROTEGIDAS DEL PANEL ---
+# --- RUTAS PROTEGIDAS DEL PANEL (Consultas parametrizadas contra inyección SQL) ---
 
 @app.get("/", response_class=HTMLResponse)
 async def panel_principal(request: Request):
