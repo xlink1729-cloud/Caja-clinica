@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse 
+from zoneinfo import ZoneInfo
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -63,32 +64,40 @@ def obtener_reporte_mensual():
     if not DATABASE_URL: return []
     conexion = psycopg2.connect(DATABASE_URL)
     cursor = conexion.cursor()
+    
+    # LA CORRECCIÓN: Convertimos 'fecha' a 'America/Mexico_City' antes de agrupar por mes
     cursor.execute("""
-        SELECT TO_CHAR(fecha, 'YYYY-MM') as mes,
+        SELECT TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'YYYY-MM') as mes,
                SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END),
                SUM(CASE WHEN tipo = 'EGRESO' THEN monto ELSE 0 END)
-        FROM flujo_caja GROUP BY mes ORDER BY mes DESC;
+        FROM flujo_caja 
+        GROUP BY mes 
+        ORDER BY mes DESC;
     """)
     filas = cursor.fetchall()
     cursor.close()
     conexion.close()
     return [{"periodo": r[0], "ingresos": r[1] or 0, "egresos": r[2] or 0, "ganancia": (r[1] or 0) - (r[2] or 0)} for r in filas]
-
+    
 def obtener_reporte_semanal():
     if not DATABASE_URL: return []
     conexion = psycopg2.connect(DATABASE_URL)
     cursor = conexion.cursor()
+    
+    # LA CORRECCIÓN: Convertimos 'fecha' a la zona horaria local antes de sacar la semana
     cursor.execute("""
-        SELECT TO_CHAR(fecha, 'IYYY-"W"IW') as semana,
+        SELECT TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'IYYY-"W"IW') as semana,
                SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END),
                SUM(CASE WHEN tipo = 'EGRESO' THEN monto ELSE 0 END)
-        FROM flujo_caja GROUP BY semana ORDER BY semana DESC;
+        FROM flujo_caja 
+        GROUP BY semana 
+        ORDER BY semana DESC;
     """)
     filas = cursor.fetchall()
     cursor.close()
     conexion.close()
     return [{"periodo": r[0], "ingresos": r[1] or 0, "egresos": r[2] or 0, "ganancia": (r[1] or 0) - (r[2] or 0)} for r in filas]
-
+    
 # --- RUTAS DE AUTENTICACIÓN ---
 
 @app.get("/login", response_class=HTMLResponse)
