@@ -10,11 +10,19 @@
 
     <header class="bg-white shadow-sm border-b border-gray-200 py-4 px-6 flex justify-between items-center">
         <div class="flex items-center gap-3">
-            <img src="/static/logo.png" alt="Logo {{ CLINIC_NAME }}" class="h-12 w-auto object-contain">
+            <div class="relative">
+                <img src="/static/logo.jpg" alt="Logo {{ CLINIC_NAME }}" class="h-12 w-auto object-contain">
+                <span class="absolute -top-1 -right-2 bg-emerald-600 text-white text-[10px] px-1 rounded-full shadow-sm">🔒</span>
+            </div>
         </div>
-        <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200">
-            Control de Efectivo Activo
-        </span>
+        <div class="flex items-center gap-4">
+            <span class="hidden md:inline-block bg-emerald-100 text-emerald-800 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200">
+                Control de Efectivo Activo
+            </span>
+            <a href="/logout" class="text-xs bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 font-bold px-3 py-2 rounded-lg border border-gray-200 transition">
+                🔒 Cerrar Sesión
+            </a>
+        </div>
     </header>
 
     <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
