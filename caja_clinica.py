@@ -186,10 +186,10 @@ async def guardar_movimiento(
     
     # Insertamos la fecha capturada del formulario
     # Si la fecha viene como "2026-06-22", Postgres la asignará con hora 00:00:00
-    cursor.execute(
-        "INSERT INTO flujo_caja (tipo, concepto, categoria, monto, fecha) VALUES (%s, %s, %s, %s, %s)", 
-        (tipo.upper(), concepto.strip(), categoria.strip(), monto, fecha)
-    )
+    cursor.execute("""
+    INSERT INTO flujo_caja (fecha, tipo, metodo, concepto, categoria, monto) 
+    VALUES (%s, %s, %s, %s, %s, %s)
+    """, (fecha, tipo, metodo, concepto, categoria, monto))
     
     conexion.commit()
     cursor.close()
