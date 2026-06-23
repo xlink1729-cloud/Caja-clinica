@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - {{ CLINIC_NAME }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 max-w-md w-full space-y-6">
+        
+        <div class="flex flex-col items-center space-y-3">
+            <img src="/static/logo.png" alt="Logo" class="h-16 w-auto object-contain">
+            <h2 class="text-xl font-bold text-gray-800 text-center">Control Financiero {{ CLINIC_NAME }}</h2>
+            <p class="text-sm text-gray-500">Ingresa la clave de acceso para continuar</p>
+        </div>
+
+        {% if error %}
+        <div class="p-3 bg-red-100 border border-red-200 text-red-700 rounded-lg text-sm font-medium text-center">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form action="/login" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Contraseña de Administrador</label>
+                <input type="password" name="password" required placeholder="••••••••" 
+                       class="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-emerald-500 outline-none transition text-center tracking-widest text-lg">
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-3 rounded-xl shadow-md transition">
+                Entrar al Sistema
+            </button>
+        </form>
+    </div>
+
+</body>
+</html>
