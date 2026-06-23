@@ -138,11 +138,11 @@ async def panel_principal(request: Request):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
-    # 1. Recuperamos los datos de los reportes
+    # --- ESTO ES LO QUE TE FALTA ---
+    # Recuperamos los reportes y movimientos
     reporte_mes = obtener_reporte_mensual()
     reporte_semana = obtener_reporte_semanal()
     
-    # 2. Recuperamos los últimos 15 movimientos
     movimientos = []
     if DATABASE_URL:
         conexion = psycopg2.connect(DATABASE_URL)
@@ -156,10 +156,9 @@ async def panel_principal(request: Request):
         cursor.close()
         conexion.close()
     
-    # 3. Recuperamos el mensaje flash si existe
     mensaje = request.session.pop("mensaje_flash", None)
     
-    # 4. Enviamos TODO a la plantilla
+    # Enviamos todos los datos a la plantilla
     return templates.TemplateResponse(
         request=request, 
         name="control_caja.html", 
