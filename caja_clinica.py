@@ -65,12 +65,11 @@ def obtener_reporte_mensual():
     if not DATABASE_URL: return []
     conexion = psycopg2.connect(DATABASE_URL)
     cursor = conexion.cursor()
-    
-    # LA CORRECCIÓN: Convertimos 'fecha' a 'America/Mexico_City' antes de agrupar por mes
+    # Esta consulta agrupa por mes y calcula la ganancia real
     cursor.execute("""
         SELECT TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'YYYY-MM') as mes,
-               SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END),
-               SUM(CASE WHEN tipo = 'EGRESO' THEN monto ELSE 0 END)
+               SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END) as ingresos,
+               SUM(CASE WHEN tipo = 'EGRESO' THEN monto ELSE 0 END) as egresos
         FROM flujo_caja 
         GROUP BY mes 
         ORDER BY mes DESC;
