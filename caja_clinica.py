@@ -138,27 +138,28 @@ async def panel_principal(request: Request):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
+    # 1. Recuperamos los datos de los reportes
     reporte_mes = obtener_reporte_mensual()
     reporte_semana = obtener_reporte_semanal()
     
+    # 2. Recuperamos los últimos 15 movimientos
     movimientos = []
     if DATABASE_URL:
         conexion = psycopg2.connect(DATABASE_URL)
-        # --- AQUÍ ESTABA EL ERROR: Faltaba crear el cursor ---
-        cursor = conexion.cursor() 
-        
+        cursor = conexion.cursor()
         cursor.execute("""
             SELECT id, tipo, concepto, categoria, monto, 
             (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City') 
             FROM flujo_caja ORDER BY fecha DESC LIMIT 15
         """)
-        
         movimientos = cursor.fetchall()
         cursor.close()
         conexion.close()
     
+    # 3. Recuperamos el mensaje flash si existe
     mensaje = request.session.pop("mensaje_flash", None)
     
+    # 4. Enviamos TODO a la plantilla
     return templates.TemplateResponse(
         request=request, 
         name="control_caja.html", 
