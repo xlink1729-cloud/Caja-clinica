@@ -173,19 +173,23 @@ async def panel_principal(request: Request):
 async def guardar_movimiento(
     request: Request, 
     tipo: str = Form(...), 
+    metodo: str = Form(...),    # <--- ¡Aquí estaba el faltante!
     concepto: str = Form(...), 
     categoria: str = Form(...), 
     monto: float = Form(...),
-    fecha: str = Form(...) # Capturamos la fecha enviada desde el formulario
+    fecha: str = Form(...) 
 ):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
+    # Validación básica de seguridad para el método de pago
+    if metodo not in ["EFECTIVO", "TRANSFERENCIA"]:
+        metodo = "EFECTIVO" # Valor por defecto seguro
+        
     conexion = psycopg2.connect(DATABASE_URL)
     cursor = conexion.cursor()
     
-    # Insertamos la fecha capturada del formulario
-    # Si la fecha viene como "2026-06-22", Postgres la asignará con hora 00:00:00
+    # Ahora incluimos 'metodo' en el INSERT
     cursor.execute("""
     INSERT INTO flujo_caja (fecha, tipo, metodo, concepto, categoria, monto) 
     VALUES (%s, %s, %s, %s, %s, %s)
