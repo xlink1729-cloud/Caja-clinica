@@ -81,7 +81,15 @@
                         <tr class="border-t border-gray-100">
                             <td class="p-2">{{ m[5].strftime('%Y-%m-%d') }}</td>
                             <td class="p-2">{{ m[1] }}</td>
-                            <td class="p-2"><span class="text-[10px] font-bold px-2 py-0.5 rounded {% if m[6] == 'TRANSFERENCIA' %}bg-blue-100 text-blue-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">{{ m[6] }}</span></td>
+                            <td class="p-2">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded 
+                                    {% if m[6] == 'TRANSFERENCIA' %}bg-blue-100 text-blue-700
+                                    {% elif m[6] == 'DEBITO' %}bg-purple-100 text-purple-700
+                                    {% elif m[6] == 'CREDITO' %}bg-orange-100 text-orange-700
+                                    {% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                                    {{ m[6] }}
+                                </span>
+                            </td>
                             <td class="p-2">{{ m[2] }}</td>
                             <td class="p-2 font-medium">${{ "{:,.2f}".format(m[4]) }}</td>
                             <td class="p-2 text-center flex justify-center gap-2">
