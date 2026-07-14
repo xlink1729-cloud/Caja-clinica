@@ -137,8 +137,6 @@ async def panel_principal(request: Request):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
-    # --- ESTO ES LO QUE TE FALTA ---
-    # Recuperamos los reportes y movimientos
     reporte_mes = obtener_reporte_mensual()
     reporte_semana = obtener_reporte_semanal()
     
@@ -146,9 +144,11 @@ async def panel_principal(request: Request):
     if DATABASE_URL:
         conexion = psycopg2.connect(DATABASE_URL)
         cursor = conexion.cursor()
+        # Ajustamos el SELECT para incluir tipo_gasto (ahora en la posición 7)
         cursor.execute("""
             SELECT id, tipo, concepto, categoria, monto, 
-            (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City') 
+            (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City'),
+            metodo, tipo_gasto
             FROM flujo_caja ORDER BY fecha DESC LIMIT 15
         """)
         movimientos = cursor.fetchall()
@@ -157,7 +157,6 @@ async def panel_principal(request: Request):
     
     mensaje = request.session.pop("mensaje_flash", None)
     
-    # Enviamos todos los datos a la plantilla
     return templates.TemplateResponse(
         request=request, 
         name="control_caja.html", 
@@ -173,7 +172,8 @@ async def panel_principal(request: Request):
 async def guardar_movimiento(
     request: Request, 
     tipo: str = Form(...), 
-    metodo: str = Form(...),    # <--- ¡Aquí estaba el faltante!
+    metodo: str = Form(...),
+    tipo_gasto: str = Form(...),    # Nuevo campo para distinguir Operativo vs Inversión
     concepto: str = Form(...), 
     categoria: str = Form(...), 
     monto: float = Form(...),
@@ -182,18 +182,18 @@ async def guardar_movimiento(
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
-    # Validación básica de seguridad para el método de pago
-    if metodo not in ["EFECTIVO", "TRANSFERENCIA"]:
-        metodo = "EFECTIVO" # Valor por defecto seguro
+    # Validación de seguridad
+    if metodo not in ["EFECTIVO", "TRANSFERENCIA"]: metodo = "EFECTIVO"
+    if tipo_gasto not in ["OPERATIVO", "INVERSION"]: tipo_gasto = "OPERATIVO"
         
     conexion = psycopg2.connect(DATABASE_URL)
     cursor = conexion.cursor()
     
-    # Ahora incluimos 'metodo' en el INSERT
+    # INSERT incluyendo el nuevo campo 'tipo_gasto'
     cursor.execute("""
-    INSERT INTO flujo_caja (fecha, tipo, metodo, concepto, categoria, monto) 
-    VALUES (%s, %s, %s, %s, %s, %s)
-    """, (fecha, tipo, metodo, concepto, categoria, monto))
+    INSERT INTO flujo_caja (fecha, tipo, metodo, tipo_gasto, concepto, categoria, monto) 
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (fecha, tipo, metodo, tipo_gasto, concepto, categoria, monto))
     
     conexion.commit()
     cursor.close()
