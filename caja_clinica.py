@@ -183,7 +183,7 @@ async def guardar_movimiento(
         return RedirectResponse(url="/login", status_code=303)
         
     # Validación de seguridad
-    if metodo not in ["EFECTIVO", "TRANSFERENCIA"]: metodo = "EFECTIVO"
+    if metodo not in ["EFECTIVO", "TRANSFERENCIA", "DEBITO", "CREDITO"]: metodo = "EFECTIVO"
     if tipo_gasto not in ["OPERATIVO", "INVERSION"]: tipo_gasto = "OPERATIVO"
         
     conexion = psycopg2.connect(DATABASE_URL)
