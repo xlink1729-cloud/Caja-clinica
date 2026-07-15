@@ -59,6 +59,8 @@
             <div class="bg-white p-6 rounded-xl shadow-sm border"><h2 class="text-lg font-semibold mb-4">📊 Balance por Mes</h2>
                 <table class="w-full text-sm"><thead><tr class="text-gray-500 text-left uppercase"><th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Ganancia</th></tr></thead><tbody>{% for r in reporte_mensual %}<tr><td>{{ r.periodo }}</td><td class="text-emerald-600">${{ "{:,.2f}".format(r.ingresos) }}</td><td class="text-red-600">${{ "{:,.2f}".format(r.egresos) }}</td><td class="font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">${{ "{:,.2f}".format(r.ganancia) }}</td></tr>{% endfor %}</tbody></table>
             </div>
+            <div class="mt-4">
+                <a href="/reporte-inversion" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700"> 📈 Ver Resumen de Inversión</a></div>
         </div>
 
         <!-- Arqueo -->
