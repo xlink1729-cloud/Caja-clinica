@@ -148,7 +148,7 @@ async def panel_principal(request: Request):
         cursor.execute("""
             SELECT id, tipo, concepto, categoria, monto, 
             (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City'),
-            metodo, tipo_gasto
+            metodo, tipo_gasto, socio
             FROM flujo_caja ORDER BY fecha DESC LIMIT 15
         """)
         movimientos = cursor.fetchall()
@@ -174,6 +174,7 @@ async def guardar_movimiento(
     tipo: str = Form(...), 
     metodo: str = Form(...),
     tipo_gasto: str = Form(...),    # Nuevo campo para distinguir Operativo vs Inversión
+    socio: str = Form(...)
     concepto: str = Form(...), 
     categoria: str = Form(...), 
     monto: float = Form(...),
