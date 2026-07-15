@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Inversión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">🏗️ Reporte de Inversión por Socio</h1>
+        <table class="w-full text-left">
+            <tr class="border-b bg-gray-50 text-gray-600 font-bold">
+                <td class="p-3">Socio</td>
+                <td class="p-3 text-right">Total Invertido</td>
+            </tr>
+            {% for fila in resumen %}
+            <tr class="border-b">
+                <td class="p-3 font-semibold">{{ fila[0] }}</td>
+                <td class="p-3 text-right text-emerald-600 font-bold">${{ "{:,.2f}".format(fila[1]) }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <a href="/" class="mt-6 inline-block bg-gray-600 text-white px-4 py-2 rounded-lg">← Volver al Panel</a>
+    </div>
+</body>
+</html>
