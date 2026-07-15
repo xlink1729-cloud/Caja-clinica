@@ -148,7 +148,7 @@ async def panel_principal(request: Request):
         cursor.execute("""
             SELECT id, tipo, concepto, categoria, monto, 
             (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City'),
-            metodo, tipo_gasto, socio
+            metodo, tipo_gasto, socio,
             FROM flujo_caja ORDER BY fecha DESC LIMIT 15
         """)
         movimientos = cursor.fetchall()
