@@ -192,9 +192,9 @@ async def guardar_movimiento(
     
     # INSERT incluyendo el nuevo campo 'tipo_gasto'
     cursor.execute("""
-    INSERT INTO flujo_caja (fecha, tipo, metodo, tipo_gasto, concepto, categoria, monto) 
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (fecha, tipo, metodo, tipo_gasto, concepto, categoria, monto))
+    INSERT INTO flujo_caja (fecha, tipo, metodo, tipo_gasto, socio, concepto, categoria, monto) 
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """, (fecha, tipo, metodo, tipo_gasto, socio, concepto, categoria, monto))
     
     conexion.commit()
     cursor.close()
