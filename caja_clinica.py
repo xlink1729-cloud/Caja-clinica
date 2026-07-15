@@ -242,3 +242,28 @@ async def actualizar_movimiento(request: Request, id: int, tipo: str = Form(...)
     conexion.close()
     request.session["mensaje_flash"] = "✅ Registro actualizado"
     return RedirectResponse(url="/", status_code=303)
+
+@app.get("/reporte-inversion", response_class=HTMLResponse)
+async def reporte_inversion(request: Request):
+    if not usuario_autenticado(request):
+        return RedirectResponse(url="/login", status_code=303)
+        
+    conexion = psycopg2.connect(DATABASE_URL)
+    cursor = conexion.cursor()
+    
+    # Consulta que suma lo invertido por cada uno
+    cursor.execute("""
+        SELECT socio, SUM(monto) as total_invertido
+        FROM flujo_caja 
+        WHERE tipo_gasto = 'INVERSION'
+        GROUP BY socio;
+    """)
+    resumen = cursor.fetchall()
+    cursor.close()
+    conexion.close()
+    
+    return templates.TemplateResponse(
+        request=request, 
+        name="reporte_inversion.html", 
+        context={"resumen": resumen}
+    )
