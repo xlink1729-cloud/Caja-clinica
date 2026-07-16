@@ -18,15 +18,15 @@
                 </tr>
             </thead>
             <tbody>
-                {% set total_general = [] %}
-                {% for fila in resumen %}{% do total_general.append(fila[1]) %}{% endfor %}
-                {% set suma_total = total_general | sum %}
+                {# Calculamos el total general directamente del resumen #}
+                {% set suma_total = resumen | map(attribute=1) | sum %}
 
                 {% for fila in resumen %}
                 <tr class="border-b">
                     <td class="p-3 font-semibold">{{ fila[0] }}</td>
                     <td class="p-3 text-right text-emerald-600 font-bold">${{ "{:,.2f}".format(fila[1]) }}</td>
                     <td class="p-3 text-right text-gray-600">
+                        {# Calculamos el porcentaje al vuelo #}
                         {{ "{:.1f}".format((fila[1] / suma_total * 100) if suma_total > 0 else 0) }}%
                     </td>
                 </tr>
