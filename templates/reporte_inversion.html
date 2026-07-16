@@ -2,25 +2,48 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reporte de Inversión</title>
+    <title>Resumen de Inversión</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-6">
-    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md">
-        <h1 class="text-2xl font-bold mb-6 text-gray-800">🏗️ Reporte de Inversión por Socio</h1>
-        <table class="w-full text-left">
-            <tr class="border-b bg-gray-50 text-gray-600 font-bold">
-                <td class="p-3">Socio</td>
-                <td class="p-3 text-right">Total Invertido</td>
-            </tr>
-            {% for fila in resumen %}
-            <tr class="border-b">
-                <td class="p-3 font-semibold">{{ fila[0] }}</td>
-                <td class="p-3 text-right text-emerald-600 font-bold">${{ "{:,.2f}".format(fila[1]) }}</td>
-            </tr>
-            {% endfor %}
+    <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">🏗️ Resumen de Inversión</h1>
+        
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 text-gray-600 font-bold border-b">
+                    <td class="p-3">Socio</td>
+                    <td class="p-3 text-right">Monto Invertido</td>
+                    <td class="p-3 text-right">Porcentaje</td>
+                </tr>
+            </thead>
+            <tbody>
+                {% set total_general = [] %}
+                {% for fila in resumen %}{% do total_general.append(fila[1]) %}{% endfor %}
+                {% set suma_total = total_general | sum %}
+
+                {% for fila in resumen %}
+                <tr class="border-b">
+                    <td class="p-3 font-semibold">{{ fila[0] }}</td>
+                    <td class="p-3 text-right text-emerald-600 font-bold">${{ "{:,.2f}".format(fila[1]) }}</td>
+                    <td class="p-3 text-right text-gray-600">
+                        {{ "{:.1f}".format((fila[1] / suma_total * 100) if suma_total > 0 else 0) }}%
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="bg-gray-100 font-bold">
+                    <td class="p-3">TOTAL GENERAL</td>
+                    <td class="p-3 text-right">${{ "{:,.2f}".format(suma_total) }}</td>
+                    <td class="p-3 text-right">100%</td>
+                </tr>
+            </tfoot>
         </table>
-        <a href="/" class="mt-6 inline-block bg-gray-600 text-white px-4 py-2 rounded-lg">← Volver al Panel</a>
+        
+        <div class="mt-6 flex gap-4">
+            <a href="/" class="bg-gray-600 text-white px-4 py-2 rounded-lg">← Volver</a>
+        </div>
     </div>
 </body>
 </html>
