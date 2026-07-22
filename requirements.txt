@@ -5,3 +5,5 @@ starlette
 jinja2
 python-multipart
 itsdangerous
+streamlit
+pandas
