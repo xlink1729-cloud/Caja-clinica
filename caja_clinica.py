@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER")
 PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "#10b981") 
 # Contraseña maestra leída desde el panel de Render
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 app = FastAPI(title="Control de Caja")
 app.mount("/static", StaticFiles(directory="static"), name="static")
