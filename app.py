@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 st.set_page_config(
