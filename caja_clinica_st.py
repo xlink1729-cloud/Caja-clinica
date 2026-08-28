@@ -2,47 +2,51 @@ import os
 import time
 import psycopg2
 from datetime import datetime
+import pandas as pd
 import streamlit as st
 
 # ==========================================
-# 1. CONFIGURACIÓN E INICIALIZACIÓN
+# 1. CONFIGURACIÓN INICIAL
 # ==========================================
 CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER")
 PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "#10b981") 
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1234")  # Ajustar variable en Render/Local
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1234")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 st.set_page_config(
-    page_title=f"Control de Caja - {CLINIC_NAME}",
+    page_title=f"{CLINIC_NAME} - Control de Caja",
     page_icon="🏥",
     layout="wide"
 )
 
-# Estilo personalizado mínimo para el color primario
+# Estilo personalizado para emular Tailwind / Marca
 st.markdown(f"""
     <style>
     :root {{
         --primary-color: {PRIMARY_COLOR};
     }}
+    .main-header {{
+        font-weight: 700;
+        color: #1f2937;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. FUNCIONES DE BASE DE DATOS
+# 2. FUNCIONES BASE DE DATOS
 # ==========================================
 def get_db_connection():
     if not DATABASE_URL:
-        st.error("⚠️ DATABASE_URL no está configurada.")
+        st.error("⚠️ DATABASE_URL no está configurada en las variables de entorno.")
         return None
     return psycopg2.connect(DATABASE_URL)
 
 def inicializar_bd():
     conn = get_db_connection()
-    if not conn:
-        return
+    if not conn: return
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS flujo_caja (
@@ -61,7 +65,6 @@ def inicializar_bd():
     cursor.close()
     conn.close()
 
-# Inicializamos la base de datos
 inicializar_bd()
 
 def obtener_reporte_mensual():
@@ -79,7 +82,7 @@ def obtener_reporte_mensual():
     filas = cursor.fetchall()
     cursor.close()
     conn.close()
-    return [{"periodo": r[0], "ingresos": r[1] or 0, "egresos": r[2] or 0, "ganancia": (r[1] or 0) - (r[2] or 0)} for r in filas]
+    return [{"Mes": r[0], "Ingresos": r[1] or 0.0, "Egresos": r[2] or 0.0, "Ganancia": (r[1] or 0.0) - (r[2] or 0.0)} for r in filas]
 
 def obtener_reporte_semanal():
     conn = get_db_connection()
@@ -87,8 +90,8 @@ def obtener_reporte_semanal():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'IYYY-"W"IW') as semana,
-               SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END),
-               SUM(CASE WHEN tipo = 'EGRESO' THEN monto ELSE 0 END)
+               SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END) as ingresos,
+               SUM(CASE WHEN tipo = 'EGRESO' THEN monto ELSE 0 END) as egresos
         FROM flujo_caja 
         GROUP BY semana 
         ORDER BY semana DESC;
@@ -96,7 +99,7 @@ def obtener_reporte_semanal():
     filas = cursor.fetchall()
     cursor.close()
     conn.close()
-    return [{"periodo": r[0], "ingresos": r[1] or 0, "egresos": r[2] or 0, "ganancia": (r[1] or 0) - (r[2] or 0)} for r in filas]
+    return [{"Semana": r[0], "Ingresos": r[1] or 0.0, "Egresos": r[2] or 0.0, "Ganancia": (r[1] or 0.0) - (r[2] or 0.0)} for r in filas]
 
 def obtener_movimientos():
     conn = get_db_connection()
@@ -108,158 +111,208 @@ def obtener_movimientos():
         metodo, tipo_gasto, socio
         FROM flujo_caja ORDER BY fecha DESC LIMIT 15
     """)
-    movimientos = cursor.fetchall()
+    movs = cursor.fetchall()
     cursor.close()
     conn.close()
-    return movimientos
-
-def borrar_movimiento(mov_id):
-    conn = get_db_connection()
-    if conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM flujo_caja WHERE id = %s", (mov_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
+    return movs
 
 # ==========================================
-# 3. CONTROL DE AUTENTICACIÓN Y SESIÓN
+# 3. CONTROL DE SESIÓN / LOGIN
 # ==========================================
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
-def login_form():
-    st.title(f"🏥 {CLINIC_NAME} - Control de Caja")
-    st.subheader("Iniciar Sesión")
-    
-    with st.form("login_form"):
-        password = st.text_input("Contraseña Administrador", type="password")
-        submit = st.form_submit_button("Ingresar")
-        
-        if submit:
-            if password == ADMIN_PASSWORD:
-                st.session_state.autenticado = True
-                st.rerun()
-            else:
-                time.sleep(1) # Protección contra fuerza bruta
-                st.error("❌ Contraseña incorrecta")
-
 if not st.session_state.autenticado:
-    login_form()
+    col_a, col_b, col_c = st.columns([1, 2, 1])
+    with col_b:
+        st.markdown(f"<h2 style='text-align: center;'>Control Financiero {CLINIC_NAME}</h2>", unsafe_allow_html=True)[cite: 3]
+        st.caption("Ingresa la clave de acceso para continuar")[cite: 3]
+        
+        with st.form("login_form"):
+            password = st.text_input("Contraseña de Administrador", type="password", placeholder="••••••••")[cite: 3]
+            submit = st.form_submit_button("Entrar al Sistema", use_container_width=True)[cite: 3]
+            
+            if submit:
+                if password == ADMIN_PASSWORD:
+                    st.session_state.autenticado = True
+                    st.rerun()
+                else:
+                    time.sleep(1) # Protección contra fuerza bruta
+                    st.error("❌ Contraseña incorrecta")[cite: 3]
     st.stop()
 
 # ==========================================
-# 4. INTERFAZ PRINCIPAL (DESPUÉS DEL LOGIN)
+# 4. ENCABEZADO Y NAVEGACIÓN
 # ==========================================
-
-# Barra superior con Logout
-col_title, col_logout = st.columns([0.85, 0.15])
-with col_title:
-    st.title(f"🏥 {CLINIC_NAME} - Control de Caja")
-with col_logout:
-    if st.button("Cerrar Sesión"):
+col_h1, col_h2 = st.columns([0.8, 0.2])
+with col_h1:
+    st.title(f"🏥 {CLINIC_NAME} - Control de Caja")[cite: 5]
+with col_h2:
+    if st.button("🔒 Cerrar Sesión", use_container_width=True):[cite: 5]
         st.session_state.autenticado = False
         st.rerun()
 
-# Menú lateral
-opcion = st.sidebar.radio("Navegación", ["Panel Principal", "Nuevo Movimiento", "Reporte de Inversiones"])
+opcion_menu = st.sidebar.radio("Menú", ["📝 Control de Caja", "🏗️ Resumen de Inversión"])
 
-# ------------------------------------------
-# SECCIÓN 1: PANEL PRINCIPAL
-# ------------------------------------------
-if opcion == "Panel Principal":
-    st.header("Últimos Movimientos")
+# Mapeo para legibilidad de UI
+SOCIOS_MAP = {"AMBOS": "🤝 Ambos", "NOVIA": "👤 Paola", "COMPAÑERO": "👤 Jorge"}[cite: 5]
+SOCIOS_REV = {v: k for k, v in SOCIOS_MAP.items()}
+
+# ==========================================
+# SECCIÓN: CONTROL DE CAJA
+# ==========================================
+if opcion_menu == "📝 Control de Caja":
     
-    movimientos = obtener_movimientos()
+    # --- FORMULARIO NUEVO MOVIMIENTO ---
+    with st.expander("📝 Registrar Movimiento", expanded=True):[cite: 5]
+        with st.form("form_guardar_movimiento", clear_on_submit=True):
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                fecha = st.date_input("Fecha", value=datetime.now())[cite: 5]
+                tipo = st.selectbox("Tipo", ["INGRESO", "EGRESO"], format_func=lambda x: "📥 Ingreso" if x=="INGRESO" else "📤 Egreso")[cite: 5]
+            with col2:
+                metodo = st.selectbox("Método", ["EFECTIVO", "TRANSFERENCIA", "DEBITO", "CREDITO"], 
+                                      format_func=lambda x: {"EFECTIVO": "💵 Efectivo", "TRANSFERENCIA": "📱 Transferencia", "DEBITO": "💳 Débito", "CREDITO": "💳 Crédito"}[x])[cite: 5]
+                tipo_gasto = st.selectbox("Tipo de Gasto", ["OPERATIVO", "INVERSION"], 
+                                          format_func=lambda x: "🏢 Operativo" if x=="OPERATIVO" else "🏗️ Inversión/Deuda")[cite: 5]
+            with col3:
+                socio_label = st.selectbox("Responsable / Socio", list(SOCIOS_MAP.values()))[cite: 5]
+                concepto = st.text_input("Concepto", placeholder="Concepto")[cite: 5]
+            with col4:
+                categoria = st.text_input("Categoría", placeholder="Categoría")[cite: 5]
+                monto = st.number_input("Monto", min_value=0.0, step=0.01, format="%.2f")[cite: 5]
+                
+            btn_guardar = st.form_submit_button("Guardar Registro", use_container_width=True)[cite: 5]
+            
+            if btn_guardar:
+                if not concepto or not categoria or monto <= 0:
+                    st.warning("Por favor completa los campos requeridos y un monto mayor a cero.")
+                else:
+                    socio_val = SOCIOS_REV[socio_label]
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        INSERT INTO flujo_caja (fecha, tipo, metodo, tipo_gasto, socio, concepto, categoria, monto) 
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (fecha, tipo, metodo, tipo_gasto, socio_val, concepto, categoria, monto))
+                    conn.commit()
+                    cursor.close()
+                    conn.close()
+                    st.success("✅ Registro guardado correctamente")[cite: 5]
+                    st.rerun()
+
+    # --- BALANCES SEMANAL Y MENSUAL ---
+    col_sem, col_mes = st.columns(2)
+    with col_sem:
+        st.subheader("🗓️ Balance por Semana")[cite: 5]
+        df_sem = pd.DataFrame(obtener_reporte_semanal())
+        if not df_sem.empty:
+            st.dataframe(df_sem.style.format({"Ingresos": "${:,.2f}", "Egresos": "${:,.2f}", "Ganancia": "${:,.2f}"}), use_container_width=True)[cite: 5]
+        else:
+            st.info("No hay datos disponibles.")
+
+    with col_mes:
+        st.subheader("📊 Balance por Mes")[cite: 5]
+        df_mes = pd.DataFrame(obtener_reporte_mensual())
+        if not df_mes.empty:
+            st.dataframe(df_mes.style.format({"Ingresos": "${:,.2f}", "Egresos": "${:,.2f}", "Ganancia": "${:,.2f}"}), use_container_width=True)[cite: 5]
+        else:
+            st.info("No hay datos disponibles.")
+
+    # --- ARQUEO DE CAJA ---
+    with st.expander("⚖️ Arqueo de Caja (Solo Efectivo)"):[cite: 5]
+        with st.form("form_arqueo"):
+            c_arq1, c_arq2, c_arq3 = st.columns([1, 1, 1])
+            with c_arq1:
+                fecha_arq = st.date_input("Fecha Arqueo", value=datetime.now())[cite: 5]
+            with c_arq2:
+                monto_fisico = st.number_input("Monto Físico ($)", min_value=0.0, step=0.01)[cite: 5]
+            with c_arq3:
+                st.write("")
+                st.write("")
+                btn_arq = st.form_submit_button("Verificar Saldo")[cite: 5]
+
+            if btn_arq:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT SUM(CASE WHEN tipo='INGRESO' THEN monto ELSE -monto END)
+                    FROM flujo_caja
+                    WHERE metodo = 'EFECTIVO' AND DATE(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City') <= %s
+                """, (fecha_arq,))
+                resultado = cursor.fetchone()[0] or 0.0
+                cursor.close()
+                conn.close()
+
+                diferencia = monto_fisico - resultado
+                st.info(f"Saldo teórico en sistema (Efectivo): **${resultado:,.2f}**")
+                if diferencia == 0:
+                    st.success("✅ El arqueo coincide perfectamente.")
+                elif diferencia > 0:
+                    st.warning(f"⚠️ Sobrante en caja de: **${diferencia:,.2f}**")
+                else:
+                    st.error(f"❌ Faltante en caja de: **${abs(diferencia):,.2f}**")
+
+    # --- ÚLTIMOS MOVIMIENTOS Y EDICIÓN ---
+    st.subheader("🕒 Últimos 15 Movimientos")[cite: 5]
+    movimientos = obtener_movimientos()[cite: 5]
+
     if movimientos:
         for m in movimientos:
-            mov_id, tipo, concepto, categoria, monto, fecha, metodo, tipo_gasto, socio = m
-            col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 1, 1])
+            mov_id, m_tipo, m_concepto, m_categoria, m_monto, m_fecha, m_metodo, m_tipo_gasto, m_socio = m
             
-            with col1:
-                st.write(f"**{tipo}**")
-                st.caption(str(fecha)[:16] if fecha else "")
-            with col2:
-                st.write(f"**{concepto}** ({categoria})")
-                st.caption(f"Método: {metodo} | Gasto: {tipo_gasto} | Socio: {socio}")
-            with col3:
-                color = "green" if tipo == "INGRESO" else "red"
-                st.markdown(f":{color}[${monto:,.2f}]")
-            with col4:
-                # Modal para editar rápido
-                with st.popover("✏️ Editar"):
+            c_f, c_r, c_t, c_m, c_c, c_mon, c_act = st.columns([1, 1, 1, 1, 2, 1, 1])
+            with c_f:
+                st.caption(str(m_fecha)[:10] if m_fecha else "")[cite: 5]
+            with c_r:
+                st.write(f"**{SOCIOS_MAP.get(m_socio, m_socio)}**")[cite: 5]
+            with c_t:
+                st.write(f"📥 {m_tipo}" if m_tipo == "INGRESO" else f"📤 {m_tipo}")[cite: 5]
+            with c_m:
+                st.caption(f"[{m_metodo}]")[cite: 5]
+            with c_c:
+                st.write(f"**{m_concepto}**")
+                st.caption(f"{m_categoria} | {m_tipo_gasto}")
+            with c_mon:
+                color = "green" if m_tipo == "INGRESO" else "red"
+                st.markdown(f":{color}[${m_monto:,.2f}]")[cite: 5]
+            with c_act:
+                # Modal popover para editar directamente[cite: 4]
+                with st.popover("✏️"):
                     with st.form(f"edit_form_{mov_id}"):
-                        e_tipo = st.selectbox("Tipo", ["INGRESO", "EGRESO"], index=0 if tipo == "INGRESO" else 1)
-                        e_concepto = st.text_input("Concepto", value=concepto)
-                        e_categoria = st.text_input("Categoría", value=categoria)
-                        e_monto = st.number_input("Monto", value=float(monto))
+                        e_tipo = st.selectbox("Tipo", ["INGRESO", "EGRESO"], index=0 if m_tipo=="INGRESO" else 1)[cite: 4]
+                        e_concepto = st.text_input("Concepto", value=m_concepto)[cite: 4]
+                        e_categoria = st.text_input("Categoría", value=m_categoria)[cite: 4]
+                        e_monto = st.number_input("Monto", value=float(m_monto), step=0.01)[cite: 4]
                         
-                        if st.form_submit_button("Guardar Cambios"):
+                        if st.form_submit_button("Guardar Cambios"):[cite: 4]
                             conn = get_db_connection()
                             cursor = conn.cursor()
                             cursor.execute("UPDATE flujo_caja SET tipo=%s, concepto=%s, categoria=%s, monto=%s WHERE id=%s", 
-                                           (e_tipo, e_concepto, e_categoria, e_monto, mov_id))
+                                           (e_tipo.upper(), e_concepto, e_categoria, e_monto, mov_id))
                             conn.commit()
                             cursor.close()
                             conn.close()
                             st.success("Actualizado")
                             st.rerun()
-            with col5:
-                if st.button("🗑️", key=f"del_{mov_id}"):
-                    borrar_movimiento(mov_id)
+
+                if st.button("🗑️", key=f"del_btn_{mov_id}"):[cite: 5]
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM flujo_caja WHERE id = %s", (mov_id,))
+                    conn.commit()
+                    cursor.close()
+                    conn.close()
                     st.rerun()
             st.divider()
     else:
-        st.info("No hay movimientos registrados.")
+        st.info("No hay movimientos recientes.")
 
-    st.header("Reportes")
-    tab1, tab2 = st.tabs(["Mensual", "Semanal"])
-    
-    with tab1:
-        st.dataframe(obtener_reporte_mensual(), use_container_width=True)
-    with tab2:
-        st.dataframe(obtener_reporte_semanal(), use_container_width=True)
-
-# ------------------------------------------
-# SECCIÓN 2: REGISTRAR MOVIMIENTO
-# ------------------------------------------
-elif opcion == "Nuevo Movimiento":
-    st.header("Registrar Nuevo Movimiento")
-    
-    with st.form("nuevo_movimiento_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            tipo = st.selectbox("Tipo de Movimiento", ["INGRESO", "EGRESO"])
-            metodo = st.selectbox("Método de Pago", ["EFECTIVO", "TRANSFERENCIA", "DEBITO", "CREDITO"])
-            tipo_gasto = st.selectbox("Tipo de Gasto", ["OPERATIVO", "INVERSION"])
-            socio = st.text_input("Socio / Encargado")
-        
-        with col2:
-            concepto = st.text_input("Concepto")
-            categoria = st.text_input("Categoría")
-            monto = st.number_input("Monto", min_value=0.0, step=10.0)
-            fecha = st.date_input("Fecha", value=datetime.now())
-
-        btn_guardar = st.form_submit_button("Guardar Registro")
-
-        if btn_guardar:
-            conn = get_db_connection()
-            if conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO flujo_caja (fecha, tipo, metodo, tipo_gasto, socio, concepto, categoria, monto) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, (fecha, tipo, metodo, tipo_gasto, socio, concepto, categoria, monto))
-                conn.commit()
-                cursor.close()
-                conn.close()
-                st.success("✅ Registro guardado correctamente")
-
-# ------------------------------------------
-# SECCIÓN 3: REPORTE DE INVERSIONES
-# ------------------------------------------
-elif opcion == "Reporte de Inversiones":
-    st.header("Reporte de Inversiones por Socio")
+# ==========================================
+# SECCIÓN: RESUMEN DE INVERSIÓN
+# ==========================================
+elif opcion_menu == "🏗️ Resumen de Inversión":
+    st.title("🏗️ Resumen de Inversión")[cite: 2]
     
     conn = get_db_connection()
     if conn:
@@ -273,10 +326,26 @@ elif opcion == "Reporte de Inversiones":
         resumen = cursor.fetchall()
         cursor.close()
         conn.close()
-        
+
         if resumen:
-            datos = [{"Socio": r[0], "Total Invertido ($)": r[1]} for r in resumen]
-            st.dataframe(datos, use_container_width=True)
-            st.bar_chart(data=datos, x="Socio", y="Total Invertido ($)")
+            suma_total = sum(r[1] for r in resumen)[cite: 2]
+            
+            filas_tabla = []
+            for r in resumen:
+                socio_nombre = SOCIOS_MAP.get(r[0], r[0])
+                monto_inv = r[1]
+                porcentaje = (monto_inv / suma_total * 100) if suma_total > 0 else 0.0[cite: 2]
+                filas_tabla.append({
+                    "Socio": socio_nombre,[cite: 2]
+                    "Monto Invertido": f"${monto_inv:,.2f}",[cite: 2]
+                    "Porcentaje": f"{porcentaje:.1f}%"[cite: 2]
+                })
+
+            st.table(filas_tabla)[cite: 2]
+            st.markdown(f"**TOTAL GENERAL:** `${suma_total:,.2f}` | **100%**")[cite: 2]
+            
+            # Gráfica de distribución de inversión
+            df_chart = pd.DataFrame([{"Socio": SOCIOS_MAP.get(r[0], r[0]), "Inversión": r[1]} for r in resumen])
+            st.bar_chart(df_chart, x="Socio", y="Inversión")
         else:
-            st.info("No hay registros de inversiones.")
+            st.info("No se han registrado gastos categorizados como INVERSION.")
