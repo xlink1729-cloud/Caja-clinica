@@ -125,7 +125,11 @@ if "autenticado" not in st.session_state:
 if not st.session_state.autenticado:
     col_a, col_b, col_c = st.columns([1, 2, 1])
     with col_b:
-        st.markdown(f"<h2 style='text-align: center;'>Control Financiero {CLINIC_NAME}</h2>", unsafe_allow_html=True)
+        # --- CARGA DEL LOGO EN LOGIN ---
+        if os.path.exists("static/logo.jpg"):
+            st.image("static/logo.jpg", width=120)
+        
+        st.markdown(f"<h2>Control Financiero {CLINIC_NAME}</h2>", unsafe_allow_html=True)
         st.caption("Ingresa la clave de acceso para continuar")
         
         with st.form("login_form"):
@@ -140,24 +144,25 @@ if not st.session_state.autenticado:
                     time.sleep(1) # Protección contra fuerza bruta
                     st.error("❌ Contraseña incorrecta")
     st.stop()
-
+    
 # ==========================================
 # 4. ENCABEZADO Y NAVEGACIÓN
 # ==========================================
-col_h1, col_h2 = st.columns([0.8, 0.2])
+col_logo, col_h1, col_h2 = st.columns([0.15, 0.65, 0.2])
+
+with col_logo:
+    # --- CARGA DEL LOGO EN ENCABEZADO ---
+    if os.path.exists("static/logo.jpg"):
+        st.image("static/logo.jpg", width=70)
+
 with col_h1:
-    st.title(f"🏥 {CLINIC_NAME} - Control de Caja")
+    st.title(f"{CLINIC_NAME} - Control de Caja")
+
 with col_h2:
     if st.button("🔒 Cerrar Sesión", use_container_width=True):
         st.session_state.autenticado = False
         st.rerun()
-
-opcion_menu = st.sidebar.radio("Menú", ["📝 Control de Caja", "🏗️ Resumen de Inversión"])
-
-# Mapeo para legibilidad de UI
-SOCIOS_MAP = {"AMBOS": "🤝 Ambos", "NOVIA": "👤 Paola", "COMPAÑERO": "👤 Jorge"}
-SOCIOS_REV = {v: k for k, v in SOCIOS_MAP.items()}
-
+        
 # ==========================================
 # SECCIÓN: CONTROL DE CAJA
 # ==========================================
