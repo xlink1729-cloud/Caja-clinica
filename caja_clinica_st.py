@@ -8,8 +8,8 @@ import streamlit as st
 # ==========================================
 # 1. CONFIGURACIÓN INICIAL
 # ==========================================
-CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER")
-PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "#10b981") 
+CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER COLIMA")
+PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "#0066FF") # Color Azul Fisioser
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1234")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -22,12 +22,31 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilo personalizado para emular Tailwind / Marca
+# Estilos CSS personalizados para pintar botones, focos y selectores con el azul del logo
 st.markdown(f"""
     <style>
-    :root {{
-        --primary-color: {PRIMARY_COLOR};
+    /* Color principal para botones (Formularios y Entrar al Sistema) */
+    div.stButton > button, button[kind="primary"], div.stFormSubmitButton > button {{
+        background-color: {PRIMARY_COLOR} !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
     }}
+    
+    /* Efecto al pasar el cursor sobre los botones */
+    div.stButton > button:hover, div.stFormSubmitButton > button:hover {{
+        background-color: #004dcc !important;
+        box-shadow: 0px 4px 12px rgba(0, 102, 255, 0.4) !important;
+    }}
+
+    /* Bordes de las cajas de texto y selects al hacer clic/enfocar */
+    .stTextInput input:focus, .stSelectbox div[data-baseweb="select"]:focus-within, .stNumberInput input:focus {{
+        border-color: {PRIMARY_COLOR} !important;
+        box-shadow: 0 0 0 1px {PRIMARY_COLOR} !important;
+    }}
+
+    /* Estilo del título principal */
     .main-header {{
         font-weight: 700;
         color: #1f2937;
