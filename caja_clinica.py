@@ -121,31 +121,32 @@ def obtener_reporte_semanal():
 
 def calcular_deuda_directa():
     """
-    Calcula las inversiones acumuladas individuales de Paola y Jorge 
-    y determina la deuda neta al 100% entre socios.
+    Calcula el total de todos los EGRESOS pagados de forma individual 
+    por Paola y Jorge, determinando la deuda directa al 100%.
     """
     if not DATABASE_URL:
         return {"inv_paola": 0, "inv_jorge": 0, "deuda_jorge": 0, "deuda_paola": 0}
         
     with obtener_conexion() as conexion:
         with conexion.cursor() as cursor:
+            # Suma TODOS los egresos (remodelaciones, compras, servicios) pagados por cada uno
             cursor.execute("""
                 SELECT 
                     COALESCE(SUM(CASE WHEN socio = 'PAOLA' THEN monto ELSE 0 END), 0) as paola,
                     COALESCE(SUM(CASE WHEN socio = 'JORGE' THEN monto ELSE 0 END), 0) as jorge
                 FROM flujo_caja 
-                WHERE tipo_gasto = 'INVERSION';
+                WHERE tipo = 'EGRESO';
             """)
             res = cursor.fetchone()
-            inv_paola = res[0]
-            inv_jorge = res[1]
+            total_paola = res[0]
+            total_jorge = res[1]
             
-            # Diferencia directa entre ambas inversiones
-            diferencia = inv_paola - inv_jorge
+            # Diferencia neta directa
+            diferencia = total_paola - total_jorge
             
             return {
-                "inv_paola": inv_paola,
-                "inv_jorge": inv_jorge,
+                "inv_paola": total_paola,
+                "inv_jorge": total_jorge,
                 "deuda_jorge": diferencia if diferencia > 0 else 0,
                 "deuda_paola": abs(diferencia) if diferencia < 0 else 0
             }
