@@ -57,6 +57,40 @@
             </form>
         </section>
 
+        <!-- Balance de Deuda Directa entre Socios -->
+        {% if cuentas %}
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">🤝 Control de Cuentas y Deudas de Inversión</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                    <p class="text-xs font-bold text-purple-600 uppercase">Total Invertido por Paola</p>
+                    <p class="text-2xl font-extrabold text-purple-800">${{ "{:,.2f}".format(cuentas.inv_paola) }}</p>
+                </div>
+                <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                    <p class="text-xs font-bold text-blue-600 uppercase">Total Invertido por Jorge</p>
+                    <p class="text-2xl font-extrabold text-blue-800">${{ "{:,.2f}".format(cuentas.inv_jorge) }}</p>
+                </div>
+            </div>
+
+            <!-- Alerta de Deuda -->
+            <div class="p-4 rounded-xl border text-center font-medium shadow-sm
+                {% if cuentas.deuda_jorge > 0 or cuentas.deuda_paola > 0 %} bg-amber-50 border-amber-300 text-amber-900
+                {% else %} bg-emerald-50 border-emerald-300 text-emerald-900 {% endif %}">
+                
+                {% if cuentas.deuda_jorge > 0 %}
+                    🔴 <strong>Jorge</strong> le debe a <strong>Paola</strong>: 
+                    <span class="text-xl font-black text-red-600">${{ "{:,.2f}".format(cuentas.deuda_jorge) }}</span>
+                {% elif cuentas.deuda_paola > 0 %}
+                    🔴 <strong>Paola</strong> le debe a <strong>Jorge</strong>: 
+                    <span class="text-xl font-black text-red-600">${{ "{:,.2f}".format(cuentas.deuda_paola) }}</span>
+                {% else %}
+                    🟢 <strong>Cuentas Saldadas:</strong> Ningún socio le debe dinero al otro en este momento.
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
         <!-- Reportes -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-xl shadow-sm border"><h2 class="text-lg font-semibold mb-4">🗓️ Balance por Semana</h2>
@@ -66,7 +100,8 @@
                 <table class="w-full text-sm"><thead><tr class="text-gray-500 text-left uppercase"><th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Ganancia</th></tr></thead><tbody>{% for r in reporte_mensual %}<tr><td>{{ r.periodo }}</td><td class="text-emerald-600">${{ "{:,.2f}".format(r.ingresos) }}</td><td class="text-red-600">${{ "{:,.2f}".format(r.egresos) }}</td><td class="font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">${{ "{:,.2f}".format(r.ganancia) }}</td></tr>{% endfor %}</tbody></table>
             </div>
             <div class="mt-4">
-                <a href="/reporte-inversion" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700"> 📈 Ver Resumen de Inversión</a></div>
+                <a href="/reporte-inversion" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700"> 📈 Ver Resumen de Inversión</a>
+            </div>
         </div>
 
         <!-- Arqueo -->
