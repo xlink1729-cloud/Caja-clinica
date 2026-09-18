@@ -1,30 +1,29 @@
 import os
 import time
 import psycopg2
+from psycopg2 import pool
 from datetime import datetime
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse 
 from zoneinfo import ZoneInfo
 from fastapi.staticfiles import StaticFiles
-from fastapi import Form
 from starlette.middleware.sessions import SessionMiddleware
 
-CLINIC_NAME = os.getenv("CLINIC_NAME", "FISIOSER")
+CLINIC_NAME = os.getenv("CLINIC_NAME")
 PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "#10b981") 
-# Contraseña maestra leída desde el panel de Render
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 app = FastAPI(title="Control de Caja")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# --- MEDIDAS DE CIBERSEGURIDAD AVANZADA PARA SESIONES (Manejo de Efectivo) ---
+# Configuración de sesión segura
 app.add_middleware(
     SessionMiddleware, 
-    secret_key=os.getenv("SESSION_SECRET", "secreto_super_seguro_2026"),
+    secret_key=os.getenv("SESSION_SECRET"),
     session_cookie="session_caja",
-    same_site="lax",       # Protege contra ataques de falsificación de peticiones en sitios cruzados (CSRF)
-    https_only=True        # CRÍTICO: La cookie de sesión solo viaja por canales encriptados HTTPS (Render)
+    same_site="lax",
+    https_only=True
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -35,24 +34,34 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+def obtener_conexion():
+    """Abre conexión segura a Neon."""
+    return psycopg2.connect(DATABASE_URL)
+
 def inicializar_bd():
     if not DATABASE_URL:
         return
-    conexion = psycopg2.connect(DATABASE_URL)
-    cursor = conexion.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS flujo_caja (
-            id SERIAL PRIMARY KEY,
-            tipo VARCHAR(10) NOT NULL,       
-            concepto TEXT NOT NULL,          
-            categoria VARCHAR(100) NOT NULL, 
-            monto REAL NOT NULL,
-            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conexion.commit()
-    cursor.close()
-    conexion.close()
+    try:
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS flujo_caja (
+                id SERIAL PRIMARY KEY,
+                tipo VARCHAR(10) NOT NULL,       
+                concepto TEXT NOT NULL,          
+                categoria VARCHAR(100) NOT NULL, 
+                monto REAL NOT NULL,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                tipo_gasto VARCHAR(20) DEFAULT 'OPERATIVO',
+                metodo VARCHAR(20) DEFAULT 'EFECTIVO',
+                socio VARCHAR(50) DEFAULT 'AMBOS'
+            );
+        """)
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+    except Exception as e:
+        print(f"Error al conectar con Neon: {e}")
 
 @app.on_event("startup")
 def startup_event():
@@ -63,9 +72,8 @@ def usuario_autenticado(request: Request):
 
 def obtener_reporte_mensual():
     if not DATABASE_URL: return []
-    conexion = psycopg2.connect(DATABASE_URL)
+    conexion = obtener_conexion()
     cursor = conexion.cursor()
-    # Esta consulta agrupa por mes y calcula la ganancia real
     cursor.execute("""
         SELECT TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'YYYY-MM') as mes,
                SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END) as ingresos,
@@ -81,10 +89,8 @@ def obtener_reporte_mensual():
     
 def obtener_reporte_semanal():
     if not DATABASE_URL: return []
-    conexion = psycopg2.connect(DATABASE_URL)
+    conexion = obtener_conexion()
     cursor = conexion.cursor()
-    
-    # LA CORRECCIÓN: Convertimos 'fecha' a la zona horaria local antes de sacar la semana
     cursor.execute("""
         SELECT TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'IYYY-"W"IW') as semana,
                SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END),
@@ -97,21 +103,15 @@ def obtener_reporte_semanal():
     cursor.close()
     conexion.close()
     return [{"periodo": r[0], "ingresos": r[1] or 0, "egresos": r[2] or 0, "ganancia": (r[1] or 0) - (r[2] or 0)} for r in filas]
-    
-# --- RUTAS DE AUTENTICACIÓN ---
+
+# --- AUTENTICACIÓN ---
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     if usuario_autenticado(request):
         return RedirectResponse(url="/", status_code=303)
     error = request.session.pop("error_login", None)
-    
-    # LA CORRECCIÓN: 'request' va primero afuera, y las demás variables en 'context'
-    return templates.TemplateResponse(
-        request=request, 
-        name="login.html", 
-        context={"error": error}
-    )
+    return templates.TemplateResponse(request=request, name="login.html", context={"error": error})
 
 @app.post("/login")
 async def login_action(request: Request, password: str = Form(...)):
@@ -119,8 +119,6 @@ async def login_action(request: Request, password: str = Form(...)):
         request.session["autenticado"] = True
         return RedirectResponse(url="/", status_code=303)
     else:
-        # MITIGACIÓN DE FUERZA BRUTA: Hace esperar 1 segundo si la clave falla, 
-        # impidiendo que un script intente miles de contraseñas por segundo de forma automatizada.
         time.sleep(1)
         request.session["error_login"] = "❌ Contraseña incorrecta"
         return RedirectResponse(url="/login", status_code=303)
@@ -130,7 +128,7 @@ async def logout_action(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
 
-# --- RUTAS PROTEGIDAS DEL PANEL (Consultas parametrizadas contra inyección SQL) ---
+# --- RUTAS PRINCIPALES ---
 
 @app.get("/", response_class=HTMLResponse)
 async def panel_principal(request: Request):
@@ -142,9 +140,8 @@ async def panel_principal(request: Request):
     
     movimientos = []
     if DATABASE_URL:
-        conexion = psycopg2.connect(DATABASE_URL)
+        conexion = obtener_conexion()
         cursor = conexion.cursor()
-        # Ajustamos el SELECT para incluir tipo_gasto (ahora en la posición 7)
         cursor.execute("""
             SELECT id, tipo, concepto, categoria, monto, 
             (fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City'),
@@ -173,7 +170,7 @@ async def guardar_movimiento(
     request: Request, 
     tipo: str = Form(...), 
     metodo: str = Form(...),
-    tipo_gasto: str = Form(...),    # Nuevo campo para distinguir Operativo vs Inversión
+    tipo_gasto: str = Form(...),
     socio: str = Form(...),
     concepto: str = Form(...), 
     categoria: str = Form(...), 
@@ -183,17 +180,14 @@ async def guardar_movimiento(
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
-    # Validación de seguridad
     if metodo not in ["EFECTIVO", "TRANSFERENCIA", "DEBITO", "CREDITO"]: metodo = "EFECTIVO"
     if tipo_gasto not in ["OPERATIVO", "INVERSION"]: tipo_gasto = "OPERATIVO"
         
-    conexion = psycopg2.connect(DATABASE_URL)
+    conexion = obtener_conexion()
     cursor = conexion.cursor()
-    
-    # INSERT incluyendo el nuevo campo 'tipo_gasto'
     cursor.execute("""
-    INSERT INTO flujo_caja (fecha, tipo, metodo, tipo_gasto, socio, concepto, categoria, monto) 
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO flujo_caja (fecha, tipo, metodo, tipo_gasto, socio, concepto, categoria, monto) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """, (fecha, tipo, metodo, tipo_gasto, socio, concepto, categoria, monto))
     
     conexion.commit()
@@ -203,12 +197,46 @@ async def guardar_movimiento(
     request.session["mensaje_flash"] = "✅ Registro guardado correctamente"
     return RedirectResponse(url="/", status_code=303)
 
+# --- NUEVA RUTA: ARQUEO DE CAJA ---
+@app.post("/arqueo")
+async def realizar_arqueo(request: Request, fecha_arqueo: str = Form(...), monto_fisico: float = Form(...)):
+    if not usuario_autenticado(request):
+        return RedirectResponse(url="/login", status_code=303)
+        
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    
+    # Calcula el total de efectivo esperado en esa fecha específica
+    cursor.execute("""
+        SELECT 
+            COALESCE(SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END), 0) -
+            COALESCE(SUM(CASE WHEN tipo = 'EGRESO' THEN monto ELSE 0 END), 0)
+        FROM flujo_caja
+        WHERE metodo = 'EFECTIVO' AND DATE(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City') = %s
+    """, (fecha_arqueo,))
+    
+    esperado = cursor.fetchone()[0] or 0.0
+    cursor.close()
+    conexion.close()
+    
+    diferencia = monto_fisico - esperado
+    
+    if diferencia == 0:
+        msg = f"⚖️ Arqueo de {fecha_arqueo}: Cuadre perfecto. Esperado: ${esperado:,.2f} | Contado: ${monto_fisico:,.2f}"
+    elif diferencia > 0:
+        msg = f"🟢 Arqueo de {fecha_arqueo}: Sobrante de ${diferencia:,.2f}. Esperado: ${esperado:,.2f} | Contado: ${monto_fisico:,.2f}"
+    else:
+        msg = f"🔴 Arqueo de {fecha_arqueo}: Faltante de ${abs(diferencia):,.2f}. Esperado: ${esperado:,.2f} | Contado: ${monto_fisico:,.2f}"
+        
+    request.session["mensaje_flash"] = msg
+    return RedirectResponse(url="/", status_code=303)
+
 @app.post("/borrar-movimiento/{id}")
 async def borrar_movimiento(request: Request, id: int):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
-    conexion = psycopg2.connect(DATABASE_URL)
+    conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute("DELETE FROM flujo_caja WHERE id = %s", (id,))
     conexion.commit()
@@ -216,25 +244,38 @@ async def borrar_movimiento(request: Request, id: int):
     conexion.close()
     return RedirectResponse(url="/", status_code=303)
 
-# --- RUTA PARA MOSTRAR EL FORMULARIO DE EDICIÓN ---
 @app.get("/editar-movimiento/{id}", response_class=HTMLResponse)
 async def editar_form(request: Request, id: int):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
     
-    conexion = psycopg2.connect(DATABASE_URL)
+    conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT id, tipo, concepto, categoria, monto, fecha FROM flujo_caja WHERE id = %s", (id,))
+    cursor.execute("""
+        SELECT id, tipo, concepto, categoria, monto, 
+               TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD'),
+               metodo, tipo_gasto, socio
+        FROM flujo_caja WHERE id = %s
+    """, (id,))
     movimiento = cursor.fetchone()
     cursor.close()
     conexion.close()
     
     return templates.TemplateResponse(request, "editar.html", {"m": movimiento})
 
-# --- RUTA PARA GUARDAR LA EDICIÓN ---
 @app.post("/actualizar-movimiento/{id}")
-async def actualizar_movimiento(request: Request, id: int, tipo: str = Form(...), concepto: str = Form(...), categoria: str = Form(...), monto: float = Form(...)):
-    conexion = psycopg2.connect(DATABASE_URL)
+async def actualizar_movimiento(
+    request: Request, 
+    id: int, 
+    tipo: str = Form(...), 
+    concepto: str = Form(...), 
+    categoria: str = Form(...), 
+    monto: float = Form(...)
+):
+    if not usuario_autenticado(request):
+        return RedirectResponse(url="/login", status_code=303)
+        
+    conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute("UPDATE flujo_caja SET tipo=%s, concepto=%s, categoria=%s, monto=%s WHERE id=%s", (tipo.upper(), concepto, categoria, monto, id))
     conexion.commit()
@@ -248,10 +289,8 @@ async def reporte_inversion(request: Request):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
-    conexion = psycopg2.connect(DATABASE_URL)
+    conexion = obtener_conexion()
     cursor = conexion.cursor()
-    
-    # Consulta que suma lo invertido por cada uno
     cursor.execute("""
         SELECT socio, SUM(monto) as total_invertido
         FROM flujo_caja 
