@@ -104,6 +104,40 @@ def obtener_reporte_semanal():
     conexion.close()
     return [{"periodo": r[0], "ingresos": r[1] or 0, "egresos": r[2] or 0, "ganancia": (r[1] or 0) - (r[2] or 0)} for r in filas]
 
+def calcular_deuda_directa():
+    """Calcula la deuda directa al 100% entre Paola y Jorge."""
+    if not DATABASE_URL:
+        return {"inv_paola": 0, "inv_jorge": 0, "deuda_jorge": 0, "deuda_paola": 0}
+        
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    
+    # Suma total de inversiones pagadas individualmente por cada uno
+    cursor.execute("""
+        SELECT 
+            COALESCE(SUM(CASE WHEN socio = 'Paola' THEN monto ELSE 0 END), 0) as paola,
+            COALESCE(SUM(CASE WHEN socio = 'Jorge' THEN monto ELSE 0 END), 0) as jorge
+        FROM flujo_caja 
+        WHERE tipo_gasto = 'INVERSION';
+    """)
+    
+    res = cursor.fetchone()
+    cursor.close()
+    conexion.close()
+    
+    inv_paola = res[0]
+    inv_jorge = res[1]
+    
+    # Diferencia directa (100% del monto)
+    diferencia = inv_paola - inv_jorge
+    
+    return {
+        "inv_paola": inv_paola,
+        "inv_jorge": inv_jorge,
+        "deuda_jorge": diferencia if diferencia > 0 else 0,
+        "deuda_paola": abs(diferencia) if diferencia < 0 else 0
+    }
+
 # --- AUTENTICACIÓN ---
 
 @app.get("/login", response_class=HTMLResponse)
@@ -137,6 +171,7 @@ async def panel_principal(request: Request):
         
     reporte_mes = obtener_reporte_mensual()
     reporte_semana = obtener_reporte_semanal()
+    cuentas = calcular_deuda_directa()
     
     movimientos = []
     if DATABASE_URL:
@@ -160,6 +195,7 @@ async def panel_principal(request: Request):
         context={
             "reporte_mensual": reporte_mes, 
             "reporte_semanal": reporte_semana, 
+            "cuentas": cuentas,
             "movimientos": movimientos, 
             "mensaje": mensaje
         }
