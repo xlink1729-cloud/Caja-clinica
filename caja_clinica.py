@@ -270,7 +270,7 @@ async def realizar_arqueo(request: Request, fecha_arqueo: str = Form(...), monto
     request.session["mensaje_flash"] = msg
     return RedirectResponse(url="/", status_code=303)
 
-@app.post("/borrar-movimiento/{id}")
+@app.api_route("/borrar-movimiento/{id}", methods=["GET", "POST"])
 async def borrar_movimiento(request: Request, id: int):
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -282,7 +282,7 @@ async def borrar_movimiento(request: Request, id: int):
             
     request.session["mensaje_flash"] = "🗑️ Movimiento eliminado correctamente"
     return RedirectResponse(url="/", status_code=303)
-
+    
 @app.get("/editar-movimiento/{id}", response_class=HTMLResponse)
 async def editar_form(request: Request, id: int):
     if not usuario_autenticado(request):
