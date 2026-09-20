@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ CLINIC_NAME }} - Control de Caja</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert2 para modales de confirmación profesionales -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
@@ -16,7 +18,12 @@
     </header>
 
     <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-        {% if mensaje %}<div class="p-4 bg-emerald-500 text-white rounded-lg shadow-md font-medium">{{ mensaje }}</div>{% endif %}
+        {% if mensaje %}
+        <div class="p-4 bg-emerald-500 text-white rounded-lg shadow-md font-medium flex justify-between items-center">
+            <span>{{ mensaje }}</span>
+            <button onclick="this.parentElement.remove()" class="text-white font-bold opacity-75 hover:opacity-100">&times;</button>
+        </div>
+        {% endif %}
 
         <!-- Registrar Movimiento -->
         <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -43,8 +50,8 @@
                 
                 <select name="socio" class="w-full p-2.5 border rounded-lg bg-gray-50 text-sm">
                     <option value="AMBOS">🤝 Ambos</option>
-                    <option value="Paola">👤 Paola</option>
-                    <option value="Jorge">👤 Jorge</option>
+                    <option value="PAOLA">👤 Paola</option>
+                    <option value="JORGE">👤 Jorge</option>
                 </select>
                 
                 <input type="text" name="concepto" required placeholder="Concepto" class="w-full p-2.5 border rounded-lg bg-gray-50 text-sm">
@@ -60,15 +67,15 @@
         <!-- Balance de Deuda Directa entre Socios -->
         {% if cuentas %}
         <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h2 class="text-lg font-semibold mb-4 text-gray-700">🤝 Control de Cuentas y Deudas de Inversión</h2>
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">🤝 Control de Cuentas y Deudas</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div class="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                    <p class="text-xs font-bold text-purple-600 uppercase">Total Invertido por Paola</p>
+                    <p class="text-xs font-bold text-purple-600 uppercase">Total Pagado por Paola</p>
                     <p class="text-2xl font-extrabold text-purple-800">${{ "{:,.2f}".format(cuentas.inv_paola) }}</p>
                 </div>
                 <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                    <p class="text-xs font-bold text-blue-600 uppercase">Total Invertido por Jorge</p>
+                    <p class="text-xs font-bold text-blue-600 uppercase">Total Pagado por Jorge</p>
                     <p class="text-2xl font-extrabold text-blue-800">${{ "{:,.2f}".format(cuentas.inv_jorge) }}</p>
                 </div>
             </div>
@@ -93,24 +100,72 @@
 
         <!-- Reportes -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border"><h2 class="text-lg font-semibold mb-4">🗓️ Balance por Semana</h2>
-                <table class="w-full text-sm"><thead><tr class="text-gray-500 text-left uppercase"><th>Semana</th><th>Ingresos</th><th>Egresos</th><th>Ganancia</th></tr></thead><tbody>{% for r in reporte_semanal %}<tr><td>{{ r.periodo }}</td><td class="text-emerald-600">${{ "{:,.2f}".format(r.ingresos) }}</td><td class="text-red-600">${{ "{:,.2f}".format(r.egresos) }}</td><td class="font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">${{ "{:,.2f}".format(r.ganancia) }}</td></tr>{% endfor %}</tbody></table>
+            <div class="bg-white p-6 rounded-xl shadow-sm border">
+                <h2 class="text-lg font-semibold mb-4">🗓️ Balance por Semana</h2>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-500 text-left uppercase">
+                            <th>Semana</th>
+                            <th>Ingresos</th>
+                            <th>Egresos</th>
+                            <th>Ganancia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in reporte_semanal %}
+                        <tr class="border-t border-gray-100">
+                            <td class="py-2">{{ r.periodo }}</td>
+                            <td class="text-emerald-600">${{ "{:,.2f}".format(r.ingresos) }}</td>
+                            <td class="text-red-600">${{ "{:,.2f}".format(r.egresos) }}</td>
+                            <td class="font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">${{ "{:,.2f}".format(r.ganancia) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border"><h2 class="text-lg font-semibold mb-4">📊 Balance por Mes</h2>
-                <table class="w-full text-sm"><thead><tr class="text-gray-500 text-left uppercase"><th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Ganancia</th></tr></thead><tbody>{% for r in reporte_mensual %}<tr><td>{{ r.periodo }}</td><td class="text-emerald-600">${{ "{:,.2f}".format(r.ingresos) }}</td><td class="text-red-600">${{ "{:,.2f}".format(r.egresos) }}</td><td class="font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">${{ "{:,.2f}".format(r.ganancia) }}</td></tr>{% endfor %}</tbody></table>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border">
+                <h2 class="text-lg font-semibold mb-4">📊 Balance por Mes</h2>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-500 text-left uppercase">
+                            <th>Mes</th>
+                            <th>Ingresos</th>
+                            <th>Egresos</th>
+                            <th>Ganancia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in reporte_mensual %}
+                        <tr class="border-t border-gray-100">
+                            <td class="py-2">{{ r.periodo }}</td>
+                            <td class="text-emerald-600">${{ "{:,.2f}".format(r.ingresos) }}</td>
+                            <td class="text-red-600">${{ "{:,.2f}".format(r.egresos) }}</td>
+                            <td class="font-bold {% if r.ganancia >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">${{ "{:,.2f}".format(r.ganancia) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            <div class="mt-4">
-                <a href="/reporte-inversion" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700"> 📈 Ver Resumen de Inversión</a>
-            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <a href="/reporte-inversion" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700 transition">📈 Ver Resumen de Inversión</a>
         </div>
 
         <!-- Arqueo -->
         <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h2 class="text-lg font-semibold mb-4 text-gray-700">⚖️ Arqueo de Caja (Solo Efectivo)</h2>
             <form action="/arqueo" method="POST" class="flex flex-wrap gap-4 items-end">
-                <div><label class="block text-xs text-gray-500 mb-1">Fecha</label><input type="date" name="fecha_arqueo" required class="p-2.5 border rounded-lg bg-gray-50"></div>
-                <div><label class="block text-xs text-gray-500 mb-1">Monto Físico ($)</label><input type="number" step="0.01" name="monto_fisico" required placeholder="0.00" class="p-2.5 border rounded-lg bg-gray-50"></div>
-                <button type="submit" class="bg-blue-600 text-white font-bold px-6 py-2.5 rounded-lg">Verificar Saldo</button>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Fecha</label>
+                    <input type="date" name="fecha_arqueo" required class="p-2.5 border rounded-lg bg-gray-50 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Monto Físico ($)</label>
+                    <input type="number" step="0.01" name="monto_fisico" required placeholder="0.00" class="p-2.5 border rounded-lg bg-gray-50 text-sm">
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-lg text-sm transition">Verificar Saldo</button>
             </form>
         </section>
 
@@ -132,10 +187,10 @@
                     </thead>
                     <tbody>
                         {% for m in movimientos %}
-                        <tr class="border-t border-gray-100">
+                        <tr class="border-t border-gray-100 hover:bg-gray-50">
                             <td class="p-2">{{ m[5].strftime('%Y-%m-%d') }}</td>
                             <td class="p-2 font-bold text-gray-600 text-xs">{{ m[8] }}</td>
-                            <td class="p-2">{{ m[1] }}</td>
+                            <td class="p-2 font-medium {% if m[1] == 'INGRESO' %}text-emerald-600{% else %}text-red-600{% endif %}">{{ m[1] }}</td>
                             <td class="p-2">
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded 
                                     {% if m[6] == 'TRANSFERENCIA' %}bg-blue-100 text-blue-700
@@ -146,11 +201,22 @@
                                 </span>
                             </td>
                             <td class="p-2">{{ m[2] }}</td>
-                            <td class="p-2 font-medium">${{ "{:,.2f}".format(m[4]) }}</td>
+                            <td class="p-2 font-bold">${{ "{:,.2f}".format(m[4]) }}</td>
                             <td class="p-2 text-center flex justify-center gap-2">
-                                <a href="/editar-movimiento/{{ m[0] }}" class="text-blue-600 hover:text-blue-800 font-bold text-xs bg-blue-50 px-2 py-1 rounded">Editar</a>
-                                <form action="/borrar-movimiento/{{ m[0] }}" method="POST" onsubmit="return confirm('¿Eliminar este movimiento?');">
-                                    <button type="submit" class="text-red-600 hover:text-red-800 font-bold text-xs bg-red-50 px-2 py-1 rounded">Eliminar</button>
+                                <!-- Botón Modificar con Alerta -->
+                                <button type="button" 
+                                        onclick="confirmarEdicion('{{ m[0] }}')" 
+                                        class="text-blue-600 hover:text-blue-800 font-bold text-xs bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded transition">
+                                    Editar
+                                </button>
+
+                                <!-- Formulario Eliminar con Alerta -->
+                                <form id="form-borrar-{{ m[0] }}" action="/borrar-movimiento/{{ m[0] }}" method="POST" class="inline">
+                                    <button type="button" 
+                                            onclick="confirmarBorrado('{{ m[0] }}', '{{ m[2] }}')" 
+                                            class="text-red-600 hover:text-red-800 font-bold text-xs bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded transition">
+                                        Eliminar
+                                    </button>
                                 </form>
                             </td>
                         </tr>
@@ -160,5 +226,52 @@
             </div>
         </section>
     </main>
+
+    <!-- JS de Confirmaciones -->
+    <script>
+        function confirmarBorrado(id, concepto) {
+            Swal.fire({
+                title: '¿Eliminar movimiento?',
+                text: `Estás a punto de borrar "${concepto}". Esta acción no se puede revertir.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    popup: 'rounded-xl',
+                    confirmButton: 'rounded-lg font-bold',
+                    cancelButton: 'rounded-lg'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(`form-borrar-${id}`).submit();
+                }
+            });
+        }
+
+        function confirmarEdicion(id) {
+            Swal.fire({
+                title: '¿Editar movimiento?',
+                text: 'Serás redirigido al formulario de edición.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Continuar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    popup: 'rounded-xl',
+                    confirmButton: 'rounded-lg font-bold',
+                    cancelButton: 'rounded-lg'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `/editar-movimiento/${id}`;
+                }
+            });
+        }
+    </script>
 </body>
 </html>
