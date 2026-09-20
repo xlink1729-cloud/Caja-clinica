@@ -316,11 +316,6 @@ async def actualizar_movimiento(
     if not usuario_autenticado(request):
         return RedirectResponse(url="/login", status_code=303)
         
-    # Validaciones de seguridad para mantener consistencia de opciones
-    if metodo not in ["EFECTIVO", "TRANSFERENCIA", "DEBITO", "CREDITO"]: metodo = "EFECTIVO"
-    if tipo_gasto not in ["OPERATIVO", "INVERSION"]: tipo_gasto = "OPERATIVO"
-    if socio not in ["AMBOS", "PAOLA", "JORGE"]: socio = "AMBOS"
-        
     with obtener_conexion() as conexion:
         with conexion.cursor() as cursor:
             cursor.execute("""
