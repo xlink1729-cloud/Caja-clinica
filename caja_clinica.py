@@ -304,6 +304,39 @@ async def editar_form(request: Request, id: int):
 async def actualizar_movimiento(
     request: Request, 
     id: int, 
+    fecha: str = Form(...),
+    tipo: str = Form(...), 
+    metodo: str = Form(...),
+    tipo_gasto: str = Form(...),
+    socio: str = Form(...),
+    concepto: str = Form(...), 
+    categoria: str = Form(...), 
+    monto: float = Form(...)
+):
+    if not usuario_autenticado(request):
+        return RedirectResponse(url="/login", status_code=303)
+        
+    # Validaciones de seguridad para mantener consistencia de opciones
+    if metodo not in ["EFECTIVO", "TRANSFERENCIA", "DEBITO", "CREDITO"]: metodo = "EFECTIVO"
+    if tipo_gasto not in ["OPERATIVO", "INVERSION"]: tipo_gasto = "OPERATIVO"
+    if socio not in ["AMBOS", "PAOLA", "JORGE"]: socio = "AMBOS"
+        
+    with obtener_conexion() as conexion:
+        with conexion.cursor() as cursor:
+            cursor.execute("""
+                UPDATE flujo_caja 
+                SET fecha=%s, tipo=%s, metodo=%s, tipo_gasto=%s, socio=%s, concepto=%s, categoria=%s, monto=%s 
+                WHERE id=%s
+            """, (fecha, tipo.upper(), metodo, tipo_gasto, socio, concepto, categoria, monto, id))
+            conexion.commit()
+            
+    request.session["mensaje_flash"] = "✅ Registro actualizado correctamente"
+    return RedirectResponse(url="/", status_code=303)
+    
+@app.post("/actualizar-movimiento/{id}")
+async def actualizar_movimiento(
+    request: Request, 
+    id: int, 
     tipo: str = Form(...), 
     concepto: str = Form(...), 
     categoria: str = Form(...), 
