@@ -120,35 +120,30 @@ def obtener_reporte_semanal():
             return [{"periodo": r[0], "ingresos": r[1] or 0, "egresos": r[2] or 0, "ganancia": (r[1] or 0) - (r[2] or 0)} for r in filas]
 
 def calcular_deuda_directa():
-    """
-    Calcula el total de todos los EGRESOS pagados de forma individual 
-    por Paola y Jorge, determinando la deuda directa al 100%.
-    """
     if not DATABASE_URL:
         return {"inv_paola": 0, "inv_jorge": 0, "deuda_jorge": 0, "deuda_paola": 0}
         
     with obtener_conexion() as conexion:
         with conexion.cursor() as cursor:
-            # Suma TODOS los egresos (remodelaciones, compras, servicios) pagados por cada uno
             cursor.execute("""
                 SELECT 
-                    COALESCE(SUM(CASE WHEN socio = 'PAOLA' THEN monto ELSE 0 END), 0) as paola,
-                    COALESCE(SUM(CASE WHEN socio = 'JORGE' THEN monto ELSE 0 END), 0) as jorge
+                    COALESCE(SUM(CASE WHEN socio = 'PAOLA' THEN monto ELSE 0 END), 0) as pagado_paola,
+                    COALESCE(SUM(CASE WHEN socio = 'JORGE' THEN monto ELSE 0 END), 0) as pagado_jorge
                 FROM flujo_caja 
                 WHERE tipo = 'EGRESO';
             """)
             res = cursor.fetchone()
-            total_paola = res[0]
-            total_jorge = res[1]
+            pagado_paola = res[0]
+            pagado_jorge = res[1]
             
-            # Diferencia neta directa
-            diferencia = total_paola - total_jorge
+            # Aplica la regla 50/50: divide la diferencia entre 2
+            diferencia_deuda = (pagado_paola - pagado_jorge) / 2.0
             
             return {
-                "inv_paola": total_paola,
-                "inv_jorge": total_jorge,
-                "deuda_jorge": diferencia if diferencia > 0 else 0,
-                "deuda_paola": abs(diferencia) if diferencia < 0 else 0
+                "inv_paola": pagado_paola,
+                "inv_jorge": pagado_jorge,
+                "deuda_jorge": diferencia_deuda if diferencia_deuda > 0 else 0,
+                "deuda_paola": abs(diferencia_deuda) if diferencia_deuda < 0 else 0
             }
 
 # ==========================================
